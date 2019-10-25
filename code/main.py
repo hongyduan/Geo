@@ -19,6 +19,7 @@ def parse_args(args=None):
     parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
+    parser.add_argument('--cuda', action='store_true', default=True)
 
     parser.add_argument('--node_dim', type=int, default=500)
     parser.add_argument('--hidden_dim', type=int, default=16)
@@ -40,7 +41,8 @@ def main(args):
     target_train, target_test, G1_graph_sub2_new, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
 
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if args.cuda==True else 'cpu')
+
     data_G2 = data_G2.to(device)
     model = Model(args, data_G2).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr = 0.01, weight_decay = 0.0005)
