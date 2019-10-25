@@ -19,7 +19,7 @@ def parse_args(args=None):
     parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
-    parser.add_argument('--cuda', action='store_true', default=True)
+    parser.add_argument('--cuda', action='store_true', default=False)
 
     parser.add_argument('--node_dim', type=int, default=500)
     parser.add_argument('--hidden_dim', type=int, default=16)
