@@ -3,6 +3,7 @@ from model import Model
 from pre_data import *
 import argparse
 import torch
+import json
 
 
 def parse_args(args=None):
@@ -16,6 +17,7 @@ def parse_args(args=None):
     parser.add_argument('--entity_relation_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/entity_embedding/node_re_embedding.npy")
     parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_result")
     parser.add_argument('--data_path_bef', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago")
+    parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save")
     parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
@@ -29,7 +31,23 @@ def parse_args(args=None):
     return parser.parse_args(args)
 
 
+def save_model(model, optimizer, args):
+    argparse_dict = vars(args)
+    with open(os.path.join(args.save_path_g2, 'config.json'), 'w') as fjson:
+        json.dump(argparse_dict, fjson)
+    torch.save({
+        'optimizer_state_dict': optimizer.state_dict()},
+        os.path.join(args.save_path_g2, 'checkpoint_en')
+    )
+    entity_embedding_g2 = model.node_embedding_g2.detach().cpu().numpy()
+    np.save(
+        os.path.join(args.save_path_g2, 'node_embedding'),
+        entity_embedding_g2
+    )
+
+
 def main(args):
+    big_score = 0
     pre_data = Pre_Data(args)
 
     all_node_embedding = pre_data.embedding()  # 26989*500
@@ -49,7 +67,7 @@ def main(args):
 
 
     for epoch in range(args.epoch):
-        print('... ... ... epoch:{} ... ... ...'.format(epoch))
+        print('_________________ epoch:{} _________________ '.format(epoch))
         # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
         model.train()
         optimizer.zero_grad()
@@ -83,6 +101,13 @@ def main(args):
 
         final_acc = acc/len(en_index_G3_list_test_bef)
         print('test_score:{}'.format(final_acc))
+        if final_acc > big_score:
+            print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
+            save_model(model, optimizer, args)
+            big_score = final_acc
+
+
+
 
 
 
