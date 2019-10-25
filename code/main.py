@@ -1,4 +1,5 @@
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from model import Model
 from pre_data import *
 import argparse
@@ -27,7 +28,7 @@ def parse_args(args=None):
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=30)
     parser.add_argument('--num_classes', type=int, default=106)
-    parser.add_argument('--epoch', type=int, default=500)
+    parser.add_argument('--epoch', type=int, default=3)
     return parser.parse_args(args)
 
 
@@ -47,6 +48,9 @@ def save_model(model, optimizer, args):
 
 
 def main(args):
+    train_loss_list = []
+    test_score_list = []
+
     big_score = 0
     pre_data = Pre_Data(args)
 
@@ -74,6 +78,7 @@ def main(args):
         out = model(data_G2.edge_index, data_G2.edge_type)
         out_train = out[en_index_G3_list_train_bef,:]
         loss = F.binary_cross_entropy(out_train, target_train)
+        train_loss_list.append(loss)
         print('train_loss:{}'.format(loss))
         loss.backward()
         optimizer.step()
@@ -100,6 +105,7 @@ def main(args):
 
 
         final_acc = acc/len(en_index_G3_list_test_bef)
+        test_score_list.append(final_acc)
         print('test_score:{}'.format(final_acc))
         if final_acc > big_score:
             print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
@@ -107,6 +113,33 @@ def main(args):
             big_score = final_acc
         else:
             print("biggest acore:{} ... ".format(big_score))
+
+    # plot
+    x1 = range(0, args.epoch)
+    x2 = range(0, args.epoch)
+    y1 = test_score_list
+    y2 = train_loss_list
+    plt.subplot(2,1,1)
+    plt.plot(x1, y1, 'b*')
+    plt.title('Test score vs. epoches')
+    plt.ylabel('Test score')
+    plt.subplot(2,1,2)
+    plt.plot(x2, y2, 'b*')
+    plt.xlabel('Train loss vs. epoches')
+    plt.ylabel('Train loss')
+    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score_*.png'))
+    # plt.show()
+
+    plt.subplot(2,1,1)
+    plt.plot(x1, y1, 'b-')
+    plt.title('Test score vs. epoches')
+    plt.ylabel('Test score')
+    plt.subplot(2,1,2)
+    plt.plot(x2, y2, 'b-')
+    plt.xlabel('Train loss vs. epoches')
+    plt.ylabel('Train loss')
+    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
+    # plt.show()
 
 
 
