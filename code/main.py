@@ -105,6 +105,8 @@ def main(args):
             print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
             save_model(model, optimizer, args)
             big_score = final_acc
+        else:
+            print("biggest acore:{} ... ".format(big_score))
 
 
 
