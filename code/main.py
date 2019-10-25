@@ -24,6 +24,7 @@ def parse_args(args=None):
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=30)
     parser.add_argument('--num_classes', type=int, default=106)
+    parser.add_argument('--epoch', type=int, default=500)
     return parser.parse_args(args)
 
 
@@ -45,7 +46,7 @@ def main(args):
     optimizer = torch.optim.Adam(model.parameters(), lr = 0.01, weight_decay = 0.0005)
 
 
-    for epoch in range(1,500):
+    for epoch in range(args.epoch):
         print('... ... ... epoch:{} ... ... ...'.format(epoch))
         # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
         model.train()
