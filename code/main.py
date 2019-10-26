@@ -33,7 +33,7 @@ def parse_args(args=None):
     return parser.parse_args(args)
 
 
-def save_model(model, optimizer, args):
+def save_model(model, optimizer, args, biggest_score):
     argparse_dict = vars(args)
     with open(os.path.join(args.save_path_g2, 'config.json'), 'w') as fjson:
         json.dump(argparse_dict, fjson)
@@ -41,11 +41,17 @@ def save_model(model, optimizer, args):
         'optimizer_state_dict': optimizer.state_dict()},
         os.path.join(args.save_path_g2, 'checkpoint_en')
     )
+    # for print
+    for var_name in optimizer.state_dict():
+        print(var_name,'\t',optimizer.state_dict()[var_name])
+
     entity_embedding_g2 = model.node_embedding_g2.detach().cpu().numpy()
     np.save(
         os.path.join(args.save_path_g2, 'node_embedding'),
         entity_embedding_g2
     )
+    with open(os.path.join(args.save_path_g2, 'final_test_score.json'), 'w') as scorejson:
+        json.dump(biggest_score, scorejson)
 
 
 def main(args):
@@ -111,8 +117,9 @@ def main(args):
         print('test_score:{}'.format(final_acc))
         if final_acc > big_score:
             print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
-            save_model(model, optimizer, args)
             big_score = final_acc
+            save_model(model, optimizer, args, big_score)
+
         else:
             print("biggest acore:{} ... ".format(big_score))
 
