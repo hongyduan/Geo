@@ -23,6 +23,7 @@ def parse_args(args=None):
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
     parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--relu_use', type=int, default=1)
 
     parser.add_argument('--learn_rate', type=float, default=0.0001)
     parser.add_argument('--node_dim', type=int, default=500)
@@ -41,9 +42,9 @@ def save_model(model, optimizer, args, biggest_score):
         'optimizer_state_dict': optimizer.state_dict()},
         os.path.join(args.save_path_g2, 'checkpoint_en')
     )
-    # for print
-    for var_name in optimizer.state_dict():
-        print(var_name,'\t',optimizer.state_dict()[var_name])
+    # # for print
+    # for var_name in optimizer.state_dict():
+    #     print(var_name,'\t',optimizer.state_dict()[var_name])
 
     entity_embedding_g2 = model.node_embedding_g2.detach().cpu().numpy()
     np.save(
