@@ -24,6 +24,7 @@ def parse_args(args=None):
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
     parser.add_argument('--cuda', action='store_true', default=False)
 
+    parser.add_argument('--learn_rate', type=float, default=0.0001)
     parser.add_argument('--node_dim', type=int, default=500)
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=30)
@@ -67,7 +68,7 @@ def main(args):
 
     data_G2 = data_G2.to(device)
     model = Model(args, data_G2).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr = 0.01, weight_decay = 0.0005)
+    optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
 
 
     for epoch in range(args.epoch):
