@@ -67,6 +67,7 @@ def main(args):
     device = torch.device('cuda' if args.cuda==True else 'cpu')
 
     data_G2 = data_G2.to(device)
+    target_train = target_train.to(device)
     model = Model(args, data_G2).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
 
