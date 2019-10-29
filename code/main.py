@@ -85,7 +85,7 @@ def main(args):
 
         for epoch in range(args.epoch):
             print('_________________ epoch:{} _________________ '.format(epoch))
-            print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
+            # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
             # # (self, edge_index_g2, edge_type_g2, edge_index_g1, list_index_g1):
@@ -96,7 +96,7 @@ def main(args):
             print('train_loss:{}'.format(loss))
             loss.backward()
             optimizer.step()
-            print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
+            # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
             model.eval()
