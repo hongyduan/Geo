@@ -1,3 +1,4 @@
+
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from model import Model
@@ -24,11 +25,12 @@ def parse_args(args=None):
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--relu_use', type=int, default=1)
+    parser.add_argument('--which_dataset', type=int, default=0)
 
     parser.add_argument('--learn_rate', type=float, default=0.0001)
     parser.add_argument('--node_dim', type=int, default=500)
     parser.add_argument('--hidden_dim', type=int, default=16)
-    parser.add_argument('--num_bases', type=int, default=30)
+    parser.add_argument('--num_bases', type=int, default=1)
     parser.add_argument('--num_classes', type=int, default=106)
     parser.add_argument('--epoch', type=int, default=3)
     return parser.parse_args(args)
@@ -56,100 +58,104 @@ def save_model(model, optimizer, args, biggest_score):
 
 
 def main(args):
-    train_loss_list = []
-    test_score_list = []
+    if args.which_dataset == 0:
+        train_loss_list = []
+        test_score_list = []
 
-    big_score = 0
-    pre_data = Pre_Data(args)
+        big_score = 0
+        pre_data = Pre_Data(args)
 
-    all_node_embedding = pre_data.embedding()  # 26989*500
-    # G1_node_embedding = [G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity] # G1_node_embedding_type: 911*500;   G1_node_embedding_type_small:106*500;   G1_node_embedding_entity:8948*500;   data_G1:2*17429;   data_G1_val:2*499;   data_G1_test:2*996
-    G1_node_embedding, G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity, data_G1, data_G1_val, data_G1_test = pre_data.G1()
-    # G2_edge_index: 664254*2;   G2_node_embedding_: 26078*500;   data_G2: 2*664254;   data_G2_val: 2*499;  data_G2_test: 2*996
-    G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test = pre_data.G2()
-    # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*500;  en_embedding_G3_train: 6178*500; en_embedding_G3_test: 1545*500
-    target_train, target_test, G1_graph_sub2_new, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
-
-
-    device = torch.device('cuda' if args.cuda==True else 'cpu')
-
-    data_G2 = data_G2.to(device)
-    target_train = target_train.to(device)
-    model = Model(args, data_G2).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
+        all_node_embedding = pre_data.embedding()  # 26989*500
+        # G1_node_embedding = [G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity] # G1_node_embedding_type: 911*500;   G1_node_embedding_type_small:106*500;   G1_node_embedding_entity:8948*500;   data_G1:2*17429;   data_G1_val:2*499;   data_G1_test:2*996
+        G1_node_embedding, G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity, data_G1, data_G1_val, data_G1_test = pre_data.G1()
+        # G2_edge_index: 664254*2;   G2_node_embedding_: 26078*500;   data_G2: 2*664254;   data_G2_val: 2*499;  data_G2_test: 2*996
+        G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test = pre_data.G2()
+        # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*500;  en_embedding_G3_train: 6178*500; en_embedding_G3_test: 1545*500
+        target_train, target_test, G1_graph_sub2_new, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
 
 
-    for epoch in range(args.epoch):
-        print('_________________ epoch:{} _________________ '.format(epoch))
-        # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
-        model.train()
-        optimizer.zero_grad()
-        out = model(data_G2.edge_index, data_G2.edge_type)
-        out_train = out[en_index_G3_list_train_bef,:]
-        loss = F.binary_cross_entropy(out_train, target_train)
-        train_loss_list.append(loss)
-        print('train_loss:{}'.format(loss))
-        loss.backward()
-        optimizer.step()
-        # print("after optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
+        device = torch.device('cuda' if args.cuda==True else 'cpu')
+
+        data_G2 = data_G2.to(device)
+        target_train = target_train.to(device)
+        model = Model(args, data_G2).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
 
 
-        model.eval()
-        acc = 0
-        out = model(data_G2.edge_index, data_G2.edge_type)
-        out_test = out[en_index_G3_list_test_bef,:]  # 1544*106
-        for i in range(out_test.shape[0]):
-            acc_temp = 0
-            out_line = out_test[i,:] # 106
-            target_line = target_test[i,:]
-            aim_top_pos = torch.nonzero(target_line)
-            aim_top_num = aim_top_pos.shape[0]
-            # maxk = max((aim_top_num*10,))
-            maxk = max((aim_top_num,))
-            out_top, out_top_pos = out_line.topk(maxk, 0, True, True)
-            for ii in out_top_pos:
-                if ii in aim_top_pos:
-                    acc_temp = acc_temp + 1
-            acc = acc_temp/aim_top_num + acc
+        for epoch in range(args.epoch):
+            print('_________________ epoch:{} _________________ '.format(epoch))
+            # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
+            model.train()
+            optimizer.zero_grad()
+            out = model(data_G2.edge_index, data_G2.edge_type)
+            out_train = out[en_index_G3_list_train_bef,:]
+            loss = F.binary_cross_entropy(out_train, target_train)
+            train_loss_list.append(loss)
+            print('train_loss:{}'.format(loss))
+            loss.backward()
+            optimizer.step()
+            # print("after optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
 
 
-        final_acc = acc/len(en_index_G3_list_test_bef)
-        test_score_list.append(final_acc)
-        print('test_score:{}'.format(final_acc))
-        if final_acc > big_score:
-            print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
-            big_score = final_acc
-            save_model(model, optimizer, args, big_score)
+            model.eval()
+            acc = 0
+            out = model(data_G2.edge_index, data_G2.edge_type)
+            out_test = out[en_index_G3_list_test_bef,:]  # 1544*106
+            for i in range(out_test.shape[0]):
+                acc_temp = 0
+                out_line = out_test[i,:] # 106
+                target_line = target_test[i,:]
+                aim_top_pos = torch.nonzero(target_line)
+                aim_top_num = aim_top_pos.shape[0]
+                # maxk = max((aim_top_num*10,))
+                maxk = max((aim_top_num,))
+                out_top, out_top_pos = out_line.topk(maxk, 0, True, True)
+                for ii in out_top_pos:
+                    if ii in aim_top_pos:
+                        acc_temp = acc_temp + 1
+                acc = acc_temp/aim_top_num + acc
 
-        else:
-            print("biggest acore:{} ... ".format(big_score))
 
-    # plot
-    x1 = range(0, args.epoch)
-    x2 = range(0, args.epoch)
-    y1 = test_score_list
-    y2 = train_loss_list
-    plt.subplot(2,1,1)
-    plt.plot(x1, y1, 'b*')
-    plt.title('Test score vs. epoches')
-    plt.ylabel('Test score')
-    plt.subplot(2,1,2)
-    plt.plot(x2, y2, 'b*')
-    plt.xlabel('Train loss vs. epoches')
-    plt.ylabel('Train loss')
-    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score_*.png'))
-    # plt.show()
+            final_acc = acc/len(en_index_G3_list_test_bef)
+            test_score_list.append(final_acc)
+            print('test_score:{}'.format(final_acc))
+            if final_acc > big_score:
+                print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
+                big_score = final_acc
+                save_model(model, optimizer, args, big_score)
 
-    plt.subplot(2,1,1)
-    plt.plot(x1, y1, 'b-')
-    plt.title('Test score vs. epoches')
-    plt.ylabel('Test score')
-    plt.subplot(2,1,2)
-    plt.plot(x2, y2, 'b-')
-    plt.xlabel('Train loss vs. epoches')
-    plt.ylabel('Train loss')
-    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
-    # plt.show()
+            else:
+                print("biggest acore:{} ... ".format(big_score))
+
+        # plot
+        x1 = range(0, args.epoch)
+        x2 = range(0, args.epoch)
+        y1 = test_score_list
+        y2 = train_loss_list
+        plt.subplot(2,1,1)
+        plt.plot(x1, y1, 'b*')
+        plt.title('Test score vs. epoches')
+        plt.ylabel('Test score')
+        plt.subplot(2,1,2)
+        plt.plot(x2, y2, 'b*')
+        plt.xlabel('Train loss vs. epoches')
+        plt.ylabel('Train loss')
+        plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score_*.png'))
+        # plt.show()
+
+        plt.subplot(2,1,1)
+        plt.plot(x1, y1, 'b-')
+        plt.title('Test score vs. epoches')
+        plt.ylabel('Test score')
+        plt.subplot(2,1,2)
+        plt.plot(x2, y2, 'b-')
+        plt.xlabel('Train loss vs. epoches')
+        plt.ylabel('Train loss')
+        plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
+        # plt.show()
+
+
+
 
 
 
