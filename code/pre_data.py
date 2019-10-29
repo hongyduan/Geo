@@ -48,7 +48,7 @@ class Pre_Data():
                     right_specific.append(values)
         G1_node_embedding_type_small = self.all_node_embedding[left_common]
         G1_ndoe_embedding_entity = self.all_node_embedding[right_specific]
-        return G1_node_embedding_type, G1_node_embedding_type_small, G1_ndoe_embedding_entity
+        return G1_node_embedding_type, G1_node_embedding_type_small, G1_ndoe_embedding_entity, left_common
 
     def G2_node_embedding(self):
         # 26078 entity embedding
@@ -96,7 +96,7 @@ class Pre_Data():
         edge_attr_G2 = torch.empty(num_lines, self.dim)
         edge_type_G2 = torch.empty(num_lines, dtype=torch.long)
         num_relations = list()
-        G2_relation_embedding = np.load(self.entity_relation_path) # 34*500
+        G2_relation_embedding = np.load(self.entity_relation_path) # 34*200
         t_i = G2_relation_embedding.shape[0]
         G2_relation_embedding_re = torch.Tensor(G2_relation_embedding.shape[0], G2_relation_embedding.shape[1])
         with open(os.path.join(self.data_path, 'train_entity_Graph.txt')) as fin:
@@ -114,13 +114,13 @@ class Pre_Data():
                 if int(int(rid)+G2_relation_embedding.shape[0]) not in num_relations:
                     num_relations.append(int(int(rid)+G2_relation_embedding.shape[0]))
                 templist_index[i] = [int(en2id), int(en1id)]
-                # edge_attr_G2[i] = torch.rand(1, 500)
+                # edge_attr_G2[i] = torch.rand(1, 200)
                 edge_attr_G2[i] = G2_relation_embedding_re[int(rid),:]
                 edge_type_G2[i] = int(int(rid)+G2_relation_embedding.shape[0])
                 i = i + 1
         num_relations = len(num_relations)
         edge_index_G2 = torch.tensor(templist_index, dtype=torch.long)  # edges: 2*332127
-        edge_attr_G2 = edge_attr_G2  # attr: (2*332127)*500
+        edge_attr_G2 = edge_attr_G2  # attr: (2*332127)*200
 
         return edge_index_G2, edge_attr_G2, edge_type_G2, num_relations
 
@@ -142,7 +142,7 @@ class Pre_Data():
                 edge_attr_G2_val_test[i] = torch.from_numpy(G2_relation_embedding[int(rid)]).unsqueeze(0)
                 i = i + 1
         edge_index_G2_val_test = torch.tensor(templist_index, dtype=torch.long)  # edges: 19538
-        edge_attr_G2_val_test = edge_attr_G2_val_test  # attr: 19538*500
+        edge_attr_G2_val_test = edge_attr_G2_val_test  # attr: 19538*200
         return edge_index_G2_val_test, edge_attr_G2_val_test
 
     def G3(self):
@@ -171,17 +171,17 @@ class Pre_Data():
         en_index_G3_list_train = torch.tensor(en_index_G3_list_train_bef, dtype=torch.long)  # 6178 entity for train
         en_index_G3_list_test = torch.tensor(en_index_G3_list_test_bef, dtype=torch.long)  # 1544 entity for test
 
-        en_embedding_G3 = torch.index_select(  # 7723*500
+        en_embedding_G3 = torch.index_select(  # 7723*200
             self.all_node_embedding,
             dim=0,
             index=en_index_G3_list
         )
-        en_embedding_G3_train = torch.index_select(  # 6178*500
+        en_embedding_G3_train = torch.index_select(  # 6178*200
             self.all_node_embedding,
             dim=0,
             index=en_index_G3_list_train
         )
-        en_embedding_G3_test = torch.index_select(  # 1545*500
+        en_embedding_G3_test = torch.index_select(  # 1545*200
             self.all_node_embedding,
             dim=0,
             index=en_index_G3_list_test
@@ -203,7 +203,7 @@ class Pre_Data():
 
     def G1(self):
         G1_node_embedding_ = self.G1_node_embedding()
-        G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_ = G1_node_embedding_
+        G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, left_common = G1_node_embedding_
         edge_index_G1_, edge_index_G1_sub2_, edge_index_G1_sub1_ = self.edge_index_G1()
         if self.leaf_node_entity:
             G1_x = self.all_node_embedding
@@ -216,7 +216,7 @@ class Pre_Data():
         data_G1_val = Data(edge_index = G1_edge_index_val.t().contiguous())
         data_G1_test = Data(edge_index = G1_edge_index_test.t().contiguous())
 
-        return G1_node_embedding_, G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, data_G1, data_G1_val, data_G1_test
+        return G1_node_embedding_, G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, data_G1, data_G1_val, data_G1_test, left_common
 
 
 

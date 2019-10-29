@@ -28,8 +28,10 @@ def parse_args(args=None):
     parser.add_argument('--which_dataset', type=int, default=0)
 
     parser.add_argument('--learn_rate', type=float, default=0.01)
-    parser.add_argument('--node_dim', type=int, default=500)
+    # parser.add_argument('--node_dim', type=int, default=500)
+    parser.add_argument('--node_dim', type=int, default=200)
     parser.add_argument('--hidden_dim', type=int, default=16)
+    parser.add_argument('--final_dim', type=int, default=200)
     parser.add_argument('--num_bases', type=int, default=1)
     parser.add_argument('--num_classes', type=int, default=106)
     parser.add_argument('--epoch', type=int, default=3)
@@ -65,12 +67,13 @@ def main(args):
         big_score = 0
         pre_data = Pre_Data(args)
 
-        all_node_embedding = pre_data.embedding()  # 26989*500
-        # G1_node_embedding = [G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity] # G1_node_embedding_type: 911*500;   G1_node_embedding_type_small:106*500;   G1_node_embedding_entity:8948*500;   data_G1:2*17429;   data_G1_val:2*499;   data_G1_test:2*996
-        G1_node_embedding, G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity, data_G1, data_G1_val, data_G1_test = pre_data.G1()
-        # G2_edge_index: 664254*2;   G2_node_embedding_: 26078*500;   data_G2: 2*664254;   data_G2_val: 2*499;  data_G2_test: 2*996
+        all_node_embedding = pre_data.embedding()  # 26989*200
+
+        # G1_node_embedding = [G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity] # G1_node_embedding_type: 911*200;   G1_node_embedding_type_small:106*200;   G1_node_embedding_entity:8948*200;   data_G1:2*17429;   data_G1_val:2*499;   data_G1_test:2*996
+        G1_node_embedding, G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity, data_G1, data_G1_val, data_G1_test, left_common = pre_data.G1()
+        # G2_edge_index: 664254*2;   G2_node_embedding_: 26078*200;   data_G2: 2*664254;   data_G2_val: 2*499;  data_G2_test: 2*996
         G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test = pre_data.G2()
-        # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*500;  en_embedding_G3_train: 6178*500; en_embedding_G3_test: 1545*500
+        # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*200;  en_embedding_G3_train: 6178*200; en_embedding_G3_test: 1545*200
         target_train, target_test, G1_graph_sub2_new, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
 
 
@@ -79,7 +82,7 @@ def main(args):
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
 
-        model = Model(args, data_G2, all_node_embedding).to(device)
+        model = Model(args, data_G2, all_node_embedding, left_common).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
 
 
@@ -88,15 +91,20 @@ def main(args):
             # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
-            # # (self, edge_index_g2, edge_type_g2, edge_index_g1, list_index_g1):
-            out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)
-            out_train = out[en_index_G3_list_train_bef,:]
+
+            out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)  # 26078*106
+            out_train = out[en_index_G3_list_train_bef,:]  # 6178*106
+            out_train = out_train.to(torch.float32)
             loss = F.binary_cross_entropy(out_train, target_train)
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
             loss.backward()
             optimizer.step()
             # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
+
+
+            update_all_node_embedding = model.all_node_embedding[en_index_G3_list_test_bef,:] # 1545*200
+            target = target_test # 1545*106
 
 
             model.eval()
@@ -155,13 +163,6 @@ def main(args):
         plt.ylabel('Train loss')
         plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
         # plt.show()
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
