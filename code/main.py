@@ -27,7 +27,7 @@ def parse_args(args=None):
     parser.add_argument('--relu_use', type=int, default=1)
     parser.add_argument('--which_dataset', type=int, default=0)
 
-    parser.add_argument('--learn_rate', type=float, default=0.0001)
+    parser.add_argument('--learn_rate', type=float, default=0.01)
     parser.add_argument('--node_dim', type=int, default=500)
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=1)
@@ -48,10 +48,10 @@ def save_model(model, optimizer, args, biggest_score):
     # for var_name in optimizer.state_dict():
     #     print(var_name,'\t',optimizer.state_dict()[var_name])
 
-    entity_embedding_g2 = model.node_embedding_g2.detach().cpu().numpy()
+    all_node_embedding = model.all_node_embedding.detach().cpu().numpy()
     np.save(
         os.path.join(args.save_path_g2, 'node_embedding'),
-        entity_embedding_g2
+        all_node_embedding
     )
     with open(os.path.join(args.save_path_g2, 'final_test_score.json'), 'w') as scorejson:
         json.dump(biggest_score, scorejson)
@@ -78,28 +78,30 @@ def main(args):
 
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
-        model = Model(args, data_G2).to(device)
+
+        model = Model(args, data_G2, all_node_embedding).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
 
 
         for epoch in range(args.epoch):
             print('_________________ epoch:{} _________________ '.format(epoch))
-            # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
+            print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
-            out = model(data_G2.edge_index, data_G2.edge_type)
+            # # (self, edge_index_g2, edge_type_g2, edge_index_g1, list_index_g1):
+            out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)
             out_train = out[en_index_G3_list_train_bef,:]
             loss = F.binary_cross_entropy(out_train, target_train)
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
             loss.backward()
             optimizer.step()
-            # print("after optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
+            print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
             model.eval()
             acc = 0
-            out = model(data_G2.edge_index, data_G2.edge_type)
+            out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)
             out_test = out[en_index_G3_list_test_bef,:]  # 1544*106
             for i in range(out_test.shape[0]):
                 acc_temp = 0
