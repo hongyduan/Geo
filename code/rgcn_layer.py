@@ -65,10 +65,6 @@ class RGCN_Layer(MessagePassing):
     def update(self, aggr_out, x):
         if self.root is not None:
             out = aggr_out + torch.matmul(x, self.root)
-            # if self.flag_of_x == 0:
-                # out = aggr_out + self.root
-            # else:
-            #     out = aggr_out + torch.matmul(x, self.root)
         if self.bias is not None:
             out = out + self.bias
         return out
