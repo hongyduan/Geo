@@ -18,7 +18,7 @@ class Pre_Data():
         self.G2_test_file_name = args.G2_test_file_name
         self.leaf_node_entity = args.leaf_node_entity
         self.num_classes = args.num_classes
-        node2id_G2, relation2id_G2, type_node2id_G1, G1_graph_sub3, G1_graph_sub2, G1_graph_sub1, val_data, test_data = Load_Data(self.data_path, self.data_path_bef)
+        node2id_G2, relation2id_G2, type_node2id_G1, G1_graph_sub3, G1_graph_sub2_tmp, G1_graph_sub2_tmp_2, G1_graph_sub2_final, G1_graph_sub2_final_is_a, G1_graph_sub2_original, G1_graph_sub1, G1_graph_sub1_is_a, val_data, test_data = Load_Data(self.data_path, self.data_path_bef)
         node_embedding_entity = np.load(self.entity_path)
         node_embedding_type = np.load(self.type_path)
         all_node_embedding = torch.from_numpy(np.vstack((node_embedding_entity, node_embedding_type)))
@@ -27,10 +27,39 @@ class Pre_Data():
         self.relation2id_G2 = relation2id_G2  # 34
         self.type_node2id_G1 = type_node2id_G1  # 911
         self.G1_graph_sub3 = G1_graph_sub3  # 106  ty_en
-        self.G1_graph_sub2 = G1_graph_sub2  # 8948 en_ty
+        self.G1_graph_sub2_tmp = G1_graph_sub2_tmp
         self.G1_graph_sub1 = G1_graph_sub1  # 894  ty_ty
+        self.G1_graph_sub1_is_a = G1_graph_sub1_is_a  # 676  ty_ty
+        # self.G1_graph_sub2_final = G1_graph_sub2_final
+        self.G1_graph_sub2_final_is_a = G1_graph_sub2_final_is_a
+        self.G1_graph_sub2_original = G1_graph_sub2_original # 8948 en_ty
+        # for key, tmppop in G1_graph_sub2_tmp.items():
+        #     tmp_list = []
+        #     while len(tmppop) > 0:
+        #         value = tmppop[0]
+        #         if value in G1_graph_sub1.keys() and value not in tmp_list:
+        #             tmppop[0:0] = G1_graph_sub1[value]
+        #             self.G1_graph_sub2_final[key][0:0] = G1_graph_sub1[value]
+        #             self.G1_graph_sub2_final[key] = list(set(self.G1_graph_sub2_final[key]))
+        #             tmppop = list(set(tmppop))
+        #         tmppop.remove(value)
+        #         tmp_list.append(value)
+        for key2, tmppop2 in G1_graph_sub2_tmp_2.items():
+            tmp_list2 = []
+            while len(tmppop2) > 0:
+                value2 = tmppop2[0]
+                if value2 in G1_graph_sub1_is_a.keys() and value2 not in tmp_list2:
+                    tmppop2[0:0] = G1_graph_sub1_is_a[value2]
+                    self.G1_graph_sub2_final_is_a[key2][0:0] = G1_graph_sub1_is_a[value2]
+                    self.G1_graph_sub2_final_is_a[key2] = list(set(self.G1_graph_sub2_final_is_a[key2]))
+                    tmppop2 = list(set(tmppop2))
+                tmppop2.remove(value2)
+                tmp_list2.append(value2)
+
         self.val_data = val_data  # (triples_val_G1, triples_val_G2, G2_links_val)        | (triples_val_G1: en_ty/499;   triples_val_G2: en_en/19538;)
         self.test_data = test_data  # (triples_test_G1, triples_test_G2, G2_links_test)   | (triples_test_G1: en_ty/996;  triples_test_G2: en_en/39073;
+
+
 
     def G1_node_embedding(self):
         # G1_node_embedding_type:  906 type embedding
@@ -58,7 +87,7 @@ class Pre_Data():
     def edge_index_G1(self):
         # G1_graph_sub2(en is_instance_of ty)  G1_graph_sub1(ty1 is_a ty2)
         templist1 = list()
-        for source, targets in self.G1_graph_sub2.items():
+        for source, targets in self.G1_graph_sub2_original.items():
             for target in targets:
                 templist1.append([int(source), int(target)])
         edge_index_G1_sub2 = torch.tensor(templist1, dtype=torch.long)  # edges: 9962
@@ -152,15 +181,38 @@ class Pre_Data():
         for i in ty_index_G3:
             ty_index_G3_dict[i] = int(ind)
             ind = ind + 1
-        G1_graph_sub2_new = OrderedDict()
-        for key, values in self.G1_graph_sub2.items():
-            if key not in G1_graph_sub2_new.keys():
-                G1_graph_sub2_new[key] = list()
+        # G1_graph_sub2_new = OrderedDict()
+        # for key, values in self.G1_graph_sub2_final.items():
+        #     if key not in G1_graph_sub2_new.keys():
+        #         G1_graph_sub2_new[key] = list()
+        #     for value in values:
+        #         if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new[key]:
+        #             G1_graph_sub2_new[key].append(int(value-len(self.node2id_G2)))
+        G1_graph_sub2_new_is_a = OrderedDict()
+        for key, values in self.G1_graph_sub2_final_is_a.items():
+            if key not in G1_graph_sub2_new_is_a.keys():
+                G1_graph_sub2_new_is_a[key] = list()
             for value in values:
-                if ty_index_G3_dict[value] not in G1_graph_sub2_new[key]:
-                    G1_graph_sub2_new[key].append(int(ty_index_G3_dict[value]))
+                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new_is_a[key]:
+                    G1_graph_sub2_new_is_a[key].append(int(value-len(self.node2id_G2)))
 
-        en_index_G3 = list(self.G1_graph_sub2.keys())
+        G1_graph_sub2_new_mini = OrderedDict()
+        for key, values in self.G1_graph_sub2_original.items():
+            if key not in G1_graph_sub2_new_mini.keys():
+                G1_graph_sub2_new_mini[key] = list()
+            for value in values:
+                if ty_index_G3_dict[value] not in G1_graph_sub2_new_mini[key]:
+                    G1_graph_sub2_new_mini[key].append(int(ty_index_G3_dict[value]))
+
+        G1_graph_sub2_new_mini_is_a = OrderedDict()
+        for key, values in self.G1_graph_sub2_original.items():
+            if key not in G1_graph_sub2_new_mini_is_a.keys():
+                G1_graph_sub2_new_mini_is_a[key] = list()
+            for value in values:
+                if ty_index_G3_dict[value] not in G1_graph_sub2_new_mini_is_a[key]:
+                    G1_graph_sub2_new_mini_is_a[key].append(int(ty_index_G3_dict[value]))
+
+        en_index_G3 = list(self.G1_graph_sub2_original.keys())
         en_index_G3_list = list()
         for i in en_index_G3:
             en_index_G3_list.append(int(i))
@@ -186,20 +238,38 @@ class Pre_Data():
             dim=0,
             index=en_index_G3_list_test
         )
-        target_train = torch.zeros(len(en_index_G3_list_train_bef), self.num_classes)
+        target_train = torch.zeros(len(en_index_G3_list_train_bef), len(self.type_node2id_G1))
+        # target_train = torch.zeros(len(en_index_G3_list_train_bef), self.type_node2id_G1)
         i=0
+        max_1_train = 0
+        final_max_1_train = 0  # 113
         for inn in en_index_G3_list_train_bef:
-            for value in G1_graph_sub2_new[str(inn)]:
+            max_1_train = 0
+            # for value in G1_graph_sub2_new[str(inn)]:
+            for value in G1_graph_sub2_new_is_a[str(inn)]:
                 target_train[i,int(value)] = 1
-            i = i + 1
-        target_test = torch.zeros(len(en_index_G3_list_test_bef), self.num_classes)
-        i=0
-        for inn in en_index_G3_list_test_bef:
-            for value in G1_graph_sub2_new[str(inn)]:
-                target_test[i, int(value)] = 1
+                max_1_train = max_1_train + 1
+            if max_1_train>final_max_1_train:
+                final_max_1_train = max_1_train
             i = i + 1
 
-        return target_train, target_test, G1_graph_sub2_new, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
+        max_1_test = 0
+        final_max_1_test = 0  # 113
+        target_test = torch.zeros(len(en_index_G3_list_test_bef), len(self.type_node2id_G1))
+        # target_test = torch.zeros(len(en_index_G3_list_test_bef), self.type_node2id_G1)
+        i=0
+        for inn in en_index_G3_list_test_bef:
+            max_1_test = 0
+            # for value in G1_graph_sub2_new[str(inn)]:
+            for value in G1_graph_sub2_new_is_a[str(inn)]:
+                target_test[i, int(value)] = 1
+                max_1_test = max_1_test +1
+            if max_1_test>final_max_1_test:
+                final_max_1_test = max_1_test
+            i = i + 1
+
+        # return target_train, target_test, G1_graph_sub2_new, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
+        return target_train, target_test, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
 
     def G1(self):
         G1_node_embedding_ = self.G1_node_embedding()
@@ -215,8 +285,9 @@ class Pre_Data():
         G1_edge_index_val, G1_edge_index_test = self.edge_index_G1_val_test()
         data_G1_val = Data(edge_index = G1_edge_index_val.t().contiguous())
         data_G1_test = Data(edge_index = G1_edge_index_test.t().contiguous())
+        G1_graph_sub1 = self.G1_graph_sub1
 
-        return G1_node_embedding_, G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, data_G1, data_G1_val, data_G1_test, left_common
+        return G1_node_embedding_, G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, data_G1, data_G1_val, data_G1_test, left_common,G1_graph_sub1
 
 
 
@@ -234,19 +305,3 @@ class Pre_Data():
 
     def embedding(self):
         return self.all_node_embedding
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

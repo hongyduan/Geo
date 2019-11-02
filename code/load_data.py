@@ -48,6 +48,10 @@ def Load_Data(data_path, data_path_bef):
 
     # G1_graph_sub2     8948entity
     G1_graph_sub2 = OrderedDict()
+    G1_graph_sub2_2 = OrderedDict()
+    G1_graph_sub2_final = OrderedDict()
+    G1_graph_sub2_final_is_a = OrderedDict()
+    G1_graph_sub2_original = OrderedDict()
     with open(os.path.join(data_path, 'train_entity_typeG.txt')) as fin:   # 8948entity 8467edge
         for line in fin:
             # en is_instance_of ty
@@ -56,11 +60,20 @@ def Load_Data(data_path, data_path_bef):
             tyid = type_node2id_G1_re[ty]
             if enid not in G1_graph_sub2.keys():
                 G1_graph_sub2[enid] = list()
+                G1_graph_sub2_2[enid] = list()
+                G1_graph_sub2_final[enid] = list()
+                G1_graph_sub2_final_is_a[enid] = list()
+                G1_graph_sub2_original[enid] = list()
             G1_graph_sub2[enid].append(tyid)
+            G1_graph_sub2_2[enid].append(tyid)
+            G1_graph_sub2_final[enid].append(tyid)
+            G1_graph_sub2_final_is_a[enid].append(tyid)
+            G1_graph_sub2_original[enid].append(tyid)
 
 
     # G1_graph_sub1    894type
     G1_graph_sub1 = OrderedDict()
+    G1_graph_sub1_is_a = OrderedDict()
     with open(os.path.join(data_path_bef, 'yago_ontonet.txt')) as fin:  # 894type 8962edge
         for line in fin:
             # ty1 is_a ty2
@@ -70,6 +83,11 @@ def Load_Data(data_path, data_path_bef):
             if ty1id not in G1_graph_sub1.keys():
                 G1_graph_sub1[ty1id] = list()
             G1_graph_sub1[ty1id].append(ty2id)
+            if _ == "isa":
+                if ty1id not in G1_graph_sub1_is_a.keys():
+                    G1_graph_sub1_is_a[ty1id] = list()
+                G1_graph_sub1_is_a[ty1id].append(ty2id)
+
 
 
     # G2_graph:   21197;   G2_links:   228619
@@ -145,6 +163,4 @@ def Load_Data(data_path, data_path_bef):
     val_data = (triples_val_G1, triples_val_G2, G2_links_val)
     test_data = (triples_test_G1, triples_test_G2, G2_links_test)
 
-    return node2id_G2_re, relation2id_G2_re, type_node2id_G1_re, G1_graph_sub3, G1_graph_sub2, G1_graph_sub1, val_data, test_data
-
-
+    return node2id_G2_re, relation2id_G2_re, type_node2id_G1_re, G1_graph_sub3, G1_graph_sub2, G1_graph_sub2_2, G1_graph_sub2_final, G1_graph_sub2_final_is_a, G1_graph_sub2_original,G1_graph_sub1, G1_graph_sub1_is_a, val_data, test_data
