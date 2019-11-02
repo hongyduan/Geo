@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from model import Model
 from pre_data import *
 import argparse
-import datetime
+# import datetime
 import random
 import torch
 import json
@@ -136,39 +136,25 @@ def main(args):
             sample_index, sample_label = sample(args, target_train, data_G2.num_nodes)  # 6178*150
 
 
-            print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
+            # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
 
             out_train = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_train_bef, sample_index)  # 6178*106
-
-            start = datetime.datetime.now()
             loss = F.binary_cross_entropy(out_train, sample_label)
-            end = datetime.datetime.now()
-            print("running time in calculate loss:" + str((end - start).seconds) + " seconds")
-
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
-            start = datetime.datetime.now()
-            loss.backward()
-            end = datetime.datetime.now()
-            print("running time in loss.backward:"+str((end-start).seconds)+" seconds")
 
-            start = datetime.datetime.now()
+            loss.backward()
             optimizer.step()
-            end = datetime.datetime.now()
-            print("running time in optimizer.step:" + str((end - start).seconds) + " seconds")
-            print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
+
+            # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
             model.eval()
             acc = 0
             sample_index, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
-            start = datetime.datetime.now()
             out_test = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index)  # 1544*150
-            end = datetime.datetime.now()
-            print("running time in test.model:" + str((end - start).seconds) + " seconds")
-
             for i in range(out_test.shape[0]):  # 1544
                 acc_temp = 0
                 out_line = out_test[i,:] # 150
@@ -191,12 +177,8 @@ def main(args):
                 print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
                 big_score = final_acc
                 save_model(model, optimizer, args, big_score)
-
             else:
                 print("biggest acore:{} ... ".format(big_score))
-
-
-        print("for debug")
 
         # plot
         x1 = range(0, args.epoch)
