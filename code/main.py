@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from model import Model
 from pre_data import *
 import argparse
-# import datetime
+import datetime
 import random
 import torch
 import json
@@ -138,6 +138,7 @@ def main(args):
 
 
         for epoch in range(args.epoch):
+            start = datetime.datetime.now()
             print('_________________ epoch:{} _________________ '.format(epoch))
             print("begin train... ...")
             print("begin sample... ...")
@@ -196,6 +197,8 @@ def main(args):
             else:
                 print("biggest acore:{} ... ".format(big_score))
             print("finished calculate test score... ...")
+            end = datetime.datetime.now()
+            print("running time in optimizer.step:" + str((end - start).seconds) + " seconds")
 
 
         # plot

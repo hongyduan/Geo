@@ -3,7 +3,7 @@ from concept_layer import Concept_Layer
 from rgcn_layer import RGCN_Layer
 import torch.nn.functional as F
 import torch.nn as nn
-# import datetime
+import datetime
 import torch
 
 class Model(torch.nn.Module):
