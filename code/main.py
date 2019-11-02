@@ -103,6 +103,8 @@ def sample(args, target_train, g2_num_nodes):
 
 def main(args):
     if args.which_dataset == 0:
+
+        print("prepare data... ...")
         train_loss_list = []
         test_score_list = []
 
@@ -119,42 +121,58 @@ def main(args):
         # target_train, target_test, G1_graph_sub2_new, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
         target_train, target_test, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
 
+        print("finished data prepare... ...")
 
 
         device = torch.device('cuda' if args.cuda==True else 'cpu')
 
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
-
+        print("initial model... ...")
         model = Model(args, data_G2, all_node_embedding, left_common, target_train).to(device)
+        print("finished initial model... ...")
+
+        print("initial optimizer... ...")
         optimizer = torch.optim.Adam(model.parameters(), lr = args.learn_rate, weight_decay = 0.0005)
+        print("finished optimizer... ...")
 
 
         for epoch in range(args.epoch):
             print('_________________ epoch:{} _________________ '.format(epoch))
-
+            print("begin train... ...")
+            print("begin sample... ...")
             sample_index, sample_label = sample(args, target_train, data_G2.num_nodes)  # 6178*150
-
+            print("finished sample... ...")
 
             # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
 
             out_train = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_train_bef, sample_index)  # 6178*106
+            print("begin calculate loss... ...")
             loss = F.binary_cross_entropy(out_train, sample_label)
+            print("finished calculate loss... ...")
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
 
+            print("begin loss backward... ...")
             loss.backward()
-            optimizer.step()
+            print("finished loss backward... ...")
 
+            print("begin optimizer... ...")
+            optimizer.step()
+            print("finished optimizer... ...")
+            print("finished train... ...")
             # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
+            print("begin test... ...")
             model.eval()
             acc = 0
             sample_index, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
             out_test = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index)  # 1544*150
+
+            print("begin calculate test score... ...")
             for i in range(out_test.shape[0]):  # 1544
                 acc_temp = 0
                 out_line = out_test[i,:] # 150
@@ -168,8 +186,6 @@ def main(args):
                     if ii in aim_top_pos:
                         acc_temp = acc_temp + 1
                 acc = acc_temp/aim_top_num + acc
-
-
             final_acc = acc/len(en_index_G3_list_test_bef)
             test_score_list.append(final_acc)
             print('test_score:{}'.format(final_acc))
@@ -179,6 +195,8 @@ def main(args):
                 save_model(model, optimizer, args, big_score)
             else:
                 print("biggest acore:{} ... ".format(big_score))
+            print("finished calculate test score... ...")
+
 
         # plot
         x1 = range(0, args.epoch)
