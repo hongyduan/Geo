@@ -32,6 +32,9 @@ def parse_args(args=None):
     parser.add_argument('--weights_clamp', type=int, default=1)
     parser.add_argument('--sigmoid', type=int, default=0)  # 0: softmax; 1:sigmoid
     parser.add_argument('--which_dataset', type=int, default=0)
+    parser.add_argument('--concept_layer', type=int, default=1)
+    parser.add_argument('--RGCN_layer', type=int, default=1)
+    parser.add_argument('--prediction_layer', type=int, default=1)
 
     parser.add_argument('--learn_rate', type=float, default=0.01)
     parser.add_argument('--node_dim', type=int, default=200)
@@ -41,6 +44,9 @@ def parse_args(args=None):
     parser.add_argument('--num_classes', type=int, default=106)
     parser.add_argument('--epoch', type=int, default=3)
     parser.add_argument('--sample_num', type=int, default=150)
+
+
+
     return parser.parse_args(args)
 
 
@@ -167,66 +173,66 @@ def main(args):
             # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
-        #     print("begin test... ...")
-        #     model.eval()
-        #     acc = 0
-        #     sample_index, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
-        #     out_test = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index)  # 1544*150
-        #
-        #     print("begin calculate test score... ...")
-        #     for i in range(out_test.shape[0]):  # 1544
-        #         acc_temp = 0
-        #         out_line = out_test[i,:] # 150
-        #         target_line = target_test[i,:]
-        #         aim_top_pos = torch.nonzero(target_line)
-        #         aim_top_num = aim_top_pos.shape[0]
-        #         # maxk = max((aim_top_num*10,))
-        #         maxk = max((aim_top_num,))
-        #         out_top, out_top_pos = out_line.topk(maxk, 0, True, True)
-        #         for ii in out_top_pos:
-        #             if ii in aim_top_pos:
-        #                 acc_temp = acc_temp + 1
-        #         acc = acc_temp/aim_top_num + acc
-        #     final_acc = acc/len(en_index_G3_list_test_bef)
-        #     test_score_list.append(final_acc)
-        #     print('test_score:{}'.format(final_acc))
-        #     if final_acc > big_score:
-        #         print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
-        #         big_score = final_acc
-        #         save_model(model, optimizer, args, big_score)
-        #     else:
-        #         print("biggest acore:{} ... ".format(big_score))
-        #     print("finished calculate test score... ...")
-        #     end = datetime.datetime.now()
-        #     print("running time in optimizer.step:" + str((end - start).seconds) + " seconds")
-        #
-        #
-        # # plot
-        # x1 = range(0, args.epoch)
-        # x2 = range(0, args.epoch)
-        # y1 = test_score_list
-        # y2 = train_loss_list
-        # plt.subplot(2,1,1)
-        # plt.plot(x1, y1, 'b*')
-        # plt.title('Test score vs. epoches')
-        # plt.ylabel('Test score')
-        # plt.subplot(2,1,2)
-        # plt.plot(x2, y2, 'b*')
-        # plt.xlabel('Train loss vs. epoches')
-        # plt.ylabel('Train loss')
-        # plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score_*.png'))
-        # # plt.show()
-        #
-        # plt.subplot(2,1,1)
-        # plt.plot(x1, y1, 'b-')
-        # plt.title('Test score vs. epoches')
-        # plt.ylabel('Test score')
-        # plt.subplot(2,1,2)
-        # plt.plot(x2, y2, 'b-')
-        # plt.xlabel('Train loss vs. epoches')
-        # plt.ylabel('Train loss')
-        # plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
-        # # plt.show()
+            print("begin test... ...")
+            model.eval()
+            acc = 0
+            sample_index, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
+            out_test = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index)  # 1544*150
+
+            print("begin calculate test score... ...")
+            for i in range(out_test.shape[0]):  # 1544
+                acc_temp = 0
+                out_line = out_test[i,:] # 150
+                target_line = sample_label[i,:]
+                aim_top_pos = torch.nonzero(target_line)
+                aim_top_num = aim_top_pos.shape[0]
+                # maxk = max((aim_top_num*10,))
+                maxk = max((aim_top_num,))
+                out_top, out_top_pos = out_line.topk(maxk, 0, True, True)
+                for ii in out_top_pos:
+                    if ii in aim_top_pos:
+                        acc_temp = acc_temp + 1
+                acc = acc_temp/aim_top_num + acc
+            final_acc = acc/len(en_index_G3_list_test_bef)
+            test_score_list.append(final_acc)
+            print('test_score:{}'.format(final_acc))
+            if final_acc > big_score:
+                print("current score is bigger, before:{}, current:{}, save model ... ".format(big_score, final_acc))
+                big_score = final_acc
+                save_model(model, optimizer, args, big_score)
+            else:
+                print("biggest acore:{} ... ".format(big_score))
+            print("finished calculate test score... ...")
+            end = datetime.datetime.now()
+            print("running time in optimizer.step:" + str((end - start).seconds) + " seconds")
+
+
+        # plot
+        x1 = range(0, args.epoch)
+        x2 = range(0, args.epoch)
+        y1 = test_score_list
+        y2 = train_loss_list
+        plt.subplot(2,1,1)
+        plt.plot(x1, y1, 'b*')
+        plt.title('Test score vs. epoches')
+        plt.ylabel('Test score')
+        plt.subplot(2,1,2)
+        plt.plot(x2, y2, 'b*')
+        plt.xlabel('Train loss vs. epoches')
+        plt.ylabel('Train loss')
+        plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score_*.png'))
+        # plt.show()
+
+        plt.subplot(2,1,1)
+        plt.plot(x1, y1, 'b-')
+        plt.title('Test score vs. epoches')
+        plt.ylabel('Test score')
+        plt.subplot(2,1,2)
+        plt.plot(x2, y2, 'b-')
+        plt.xlabel('Train loss vs. epoches')
+        plt.ylabel('Train loss')
+        plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_and_Test_score__.png'))
+        # plt.show()
 
 
 if __name__ == '__main__':
