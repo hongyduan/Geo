@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import datetime
 import torch
+import gc
 
 class Model(torch.nn.Module):
     def __init__(self, args, data, all_node_embedding, left_common,target_train):
@@ -12,58 +13,60 @@ class Model(torch.nn.Module):
         self.all_node_embedding = nn.Parameter(all_node_embedding)
         self.rgcn_layer_1 = RGCN_Layer(args.node_dim, 0, data.num_nodes, args.hidden_dim, data.num_relations, args.num_bases)
         self.rgcn_layer_2 = RGCN_Layer(args.node_dim, 1, args.hidden_dim, args.final_dim, data.num_relations, args.num_bases)
-        self.relu_use_rgcn_layer1 = args.relu_use_rgcn_layer1
-        self.relu_use_concept_layer = args.relu_use_concept_layer
         self.concept_layer = Concept_Layer()
         self.num_nodes_g2 = data.num_nodes
-        self.weights = nn.Parameter(torch.rand((200, 1)))  #
-        self.final_dim = args.final_dim
+        if args.prediction_layer == 1:
+            self.weights = nn.Parameter(torch.rand((200, 1)))  #
         self.left_common = left_common
         self.target_train = target_train  # 6178*911
-        self.sample_num = args.sample_num
-        self.concept_clamp = args.concept_clamp
-        self.weights_clamp = args.weights_clamp
-        self.sigmoid = args.sigmoid
 
 
-    def forward(self, edge_index_g2, edge_type_g2, edge_index_g1, index_list, sample_index):
+    def forward(self, args, edge_index_g2, edge_type_g2, edge_index_g1, index_list, sample_index):
+
+
 
         print("enter model.forward... ...")
-        # concept layer
-        print("begin concept layer... ...")
-        x_g1 = self.concept_layer(self.all_node_embedding, edge_index_g1)  # 26989*20
-        if self.relu_use_concept_layer == 1:
-            x_g1 = F.relu(x_g1)
-        print("finished concept layer... ...")
+        if args.concept_layer == 1:
+            # concept layer
+            print("begin concept layer... ...")
+            x_g1 = self.concept_layer(self.all_node_embedding, edge_index_g1)  # 26989*20
+            if args.relu_use_concept_layer == 1:
+                x_g1 = F.relu(x_g1)
+            print("finished concept layer... ...")
 
-        print("begin RGCN layer... ...")
-        # RGCN-layer
-        node_embedding_g2 = x_g1[0:self.num_nodes_g2,:]
-        # node_embedding_g2 = self.all_node_embedding[0:self.num_nodes_g2, :]
-        x_g2 = self.rgcn_layer_1(node_embedding_g2, edge_index_g2, edge_type_g2)
-        if self.relu_use_rgcn_layer1 == 1:
-            x_g2 = F.relu(x_g2)
-        x_g2 = self.rgcn_layer_2(x_g2, edge_index_g2, edge_type_g2) # 26078*200
-        en_embedding_matrix = x_g2[index_list, :]  # 6178*200
-        print("finished RGCN layer... ...")
+        if args.RGCN_layer == 1:
+            print("begin RGCN layer... ...")
+            # RGCN-layer
+            # node_embedding_g2 = x_g1[0:self.num_nodes_g2,:]
+            # node_embedding_g2 = self.all_node_embedding[0:self.num_nodes_g2, :]
+            if args.concept_layer == 1:
+                x_g2 = self.rgcn_layer_1(x_g1[0:self.num_nodes_g2,:], edge_index_g2, edge_type_g2)
+            else:
+                x_g2 = self.rgcn_layer_1(self.all_node_embedding[0:self.num_nodes_g2, :], edge_index_g2, edge_type_g2)
+            if args.relu_use_rgcn_layer1 == 1:
+                x_g2 = F.relu(x_g2)
+            x_g2 = self.rgcn_layer_2(x_g2, edge_index_g2, edge_type_g2) # 26078*200
+            tmp_ = x_g2[index_list, :]  # 6178*200
+            print("finished RGCN layer... ...")
 
-        print("begin prediction layer... ...")
-        # prediction layer
-        #  sample_index: 6178*150
-        tmp_ = torch.zeros((len(index_list),self.sample_num))
-        for i in range(len(index_list)):
-            if self.concept_clamp == 1:
-                sample_em = torch.clamp(F.relu(x_g1[list(sample_index[i]),:]), 0, 1)  # 150*200
-            else:
-                sample_em = F.relu(x_g1[list(sample_index[i]), :])  # 150*200
-            en_em = en_embedding_matrix[i,:]  # 1*200
-            if self.weights_clamp == 1:
-                weights = torch.clamp(self.weights, 0, 1)
-                tmp_[i,:] = torch.matmul((en_em.mul(sample_em)).mul(en_em),weights).squeeze(1)  # 150*200 * 200*1--->150*1--->150
-            else:
-                tmp_[i,:] = torch.matmul((en_em.mul(sample_em)).mul(en_em), self.weights).squeeze(1)  # 150*200 * 200*1--->150*1--->150
-        print("finished prediction layer... ...")
-        if self.sigmoid == 0:
-            return F.softmax(tmp_, dim=1)
-        else:
+        if args.prediction_layer == 1:
+            print("begin prediction layer... ...")
+            # prediction layer
+            #  sample_index: 6178*150
+            tmp_ = torch.zeros((len(index_list),args.sample_num))
+            for i in range(len(index_list)):
+                if args.concept_clamp == 1:
+                    sample_em = torch.clamp(F.relu(x_g1[list(sample_index[i]),:]), 0, 1)  # 150*200
+                else:
+                    sample_em = F.relu(x_g1[list(sample_index[i]), :])  # 150*200
+                en_em = x_g2[index_list, :][i,:]  # 1*200
+                if args.weights_clamp == 1:
+                    tmp_[i,:] = torch.matmul((en_em.mul(sample_em)).mul(en_em),torch.clamp(self.weights, 0, 1)).squeeze(1)  # 150*200 * 200*1--->150*1--->150--->1*150
+                else:
+                    tmp_[i,:] = torch.matmul((en_em.mul(sample_em)).mul(en_em), self.weights).squeeze(1)  # 150*200 * 200*1--->150*1--->150--->1*150
+            print("finished prediction layer... ...")
+        if args.sigmoid == 1:
             return torch.sigmoid(tmp_)
+        else:
+            return F.softmax(tmp_, dim=1)
+
