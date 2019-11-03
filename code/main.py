@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 from model import Model
 from pre_data import *
 import argparse
+import psutil
 import torch
 import json
+import os
 
 
 def parse_args(args=None):
@@ -32,7 +34,7 @@ def parse_args(args=None):
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=1)
     parser.add_argument('--num_classes', type=int, default=106)
-    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--epoch', type=int, default=30)
     return parser.parse_args(args)
 
 
@@ -89,20 +91,32 @@ def main(args):
             model.train()
             optimizer.zero_grad()
             # # (self, edge_index_g2, edge_type_g2, edge_index_g1, list_index_g1):
+            print("start training... ...")
+            print("use of Mem:",psutil.Process(os.getpid()).memory_info().rss/1024/1024)
             out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)
             out_train = out[en_index_G3_list_train_bef,:]
+
+            print(" start calculate loss... ...")
             loss = F.binary_cross_entropy(out_train, target_train)
+            print(" finished calculated loss... ...")
+
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
+
+            print(" start loss backward... ...")
             loss.backward()
+            print(" start optimizer... ...")
             optimizer.step()
             # print("after optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
 
 
+            print(" start testing... ...")
+            print("use of Mem:", psutil.Process(os.getpid()).memory_info().rss/1024/1024)
             model.eval()
             acc = 0
             out = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index)
             out_test = out[en_index_G3_list_test_bef,:]  # 1544*106
+            print(" calculating score... ...")
             for i in range(out_test.shape[0]):
                 acc_temp = 0
                 out_line = out_test[i,:] # 106
