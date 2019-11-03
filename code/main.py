@@ -26,23 +26,28 @@ def parse_args(args=None):
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
     parser.add_argument('--cuda', action='store_true', default=False)
+
     parser.add_argument('--relu_use_rgcn_layer1', type=int, default=1)
     parser.add_argument('--relu_use_concept_layer', type=int, default=1)
+
     parser.add_argument('--concept_clamp', type=int, default=1)
     parser.add_argument('--weights_clamp', type=int, default=1)
+
     parser.add_argument('--sigmoid', type=int, default=0)  # 0: softmax; 1:sigmoid
     parser.add_argument('--which_dataset', type=int, default=0)
+
+
     parser.add_argument('--concept_layer', type=int, default=1)
     parser.add_argument('--RGCN_layer', type=int, default=1)
     parser.add_argument('--prediction_layer', type=int, default=1)
 
-    parser.add_argument('--learn_rate', type=float, default=0.01)
+    parser.add_argument('--learn_rate', type=float, default=0.1)
     parser.add_argument('--node_dim', type=int, default=200)
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--final_dim', type=int, default=200)
     parser.add_argument('--num_bases', type=int, default=30)
     parser.add_argument('--num_classes', type=int, default=106)
-    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--epoch', type=int, default=30)
     parser.add_argument('--sample_num', type=int, default=150)
 
 
@@ -70,6 +75,7 @@ def save_model(model, optimizer, args, biggest_score):
 
 def sample(args, target_train, g2_num_nodes):
     sample_index = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
+    sample_index_min = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
     sample_label = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
     target_train_nonzero = target_train.nonzero()
     start = -1
@@ -79,6 +85,7 @@ def sample(args, target_train, g2_num_nodes):
     for item in target_train_nonzero:
         if item[0] == start:
             sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+            sample_index_min[item[0], tmp_id] = item[1]
             sample_label[item[0], tmp_id] = 1
             tmp_dict[int(item[0])].append(int(item[1]))
             tmp_id = tmp_id + 1
@@ -88,6 +95,7 @@ def sample(args, target_train, g2_num_nodes):
             start = item[0]
             tmp_id = 0
             sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+            sample_index_min[item[0], tmp_id] = item[1]
             sample_label[item[0], tmp_id] = 1
             tmp_dict[int(item[0])].append(int(item[1]))
             tmp_id = tmp_id + 1
@@ -102,8 +110,9 @@ def sample(args, target_train, g2_num_nodes):
         start_id = len(values)
         for ii in slice:
             sample_index[key, start_id] = ii + g2_num_nodes
+            sample_index_min[key, start_id] = ii
             start_id = start_id + 1
-    return sample_index, sample_label  # 6178*150
+    return sample_index, sample_index_min, sample_label  # 6178*150
 
 
 
@@ -148,14 +157,14 @@ def main(args):
             print('_________________ epoch:{} _________________ '.format(epoch))
             print("begin train... ...")
             print("begin sample... ...")
-            sample_index, sample_label = sample(args, target_train, data_G2.num_nodes)  # 6178*150
+            sample_index, sample_index_min, sample_label = sample(args, target_train, data_G2.num_nodes)  # 6178*150
             print("finished sample... ...")
 
             # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             model.train()
             optimizer.zero_grad()
 
-            out_train = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_train_bef, sample_index)  # 6178*106
+            out_train = model(args, data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_train_bef, sample_index, sample_index_min)  # 6178*106
             print("begin calculate loss... ...")
             loss = F.binary_cross_entropy(out_train, sample_label)
             print("finished calculate loss... ...")
@@ -176,8 +185,8 @@ def main(args):
             print("begin test... ...")
             model.eval()
             acc = 0
-            sample_index, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
-            out_test = model(data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index)  # 1544*150
+            sample_index, sample_index_min, sample_label = sample(args, target_test, data_G2.num_nodes)  # 1544*150
+            out_test = model(args, data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index, sample_index_min)  # 1544*150
 
             print("begin calculate test score... ...")
             for i in range(out_test.shape[0]):  # 1544
