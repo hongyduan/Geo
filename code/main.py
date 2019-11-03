@@ -32,7 +32,7 @@ def parse_args(args=None):
     parser.add_argument('--hidden_dim', type=int, default=16)
     parser.add_argument('--num_bases', type=int, default=1)
     parser.add_argument('--num_classes', type=int, default=106)
-    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--epoch', type=int, default=10)
     return parser.parse_args(args)
 
 
@@ -85,22 +85,27 @@ def main(args):
         for epoch in range(args.epoch):
             print('_________________ epoch:{} _________________ '.format(epoch))
             # print("before optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
+            print("training... ...")
             model.train()
             optimizer.zero_grad()
             out = model(data_G2.edge_index, data_G2.edge_type)
             out_train = out[en_index_G3_list_train_bef,:]
+            print("calculate loss... ...")
             loss = F.binary_cross_entropy(out_train, target_train)
             train_loss_list.append(loss)
             print('train_loss:{}'.format(loss))
+            print("loss backward... ...")
             loss.backward()
             optimizer.step()
             # print("after optimizer, the node_embedding:{}".format(torch.mean(model.node_embedding_g2 ** 2)))
 
 
+            print("testing... ...")
             model.eval()
             acc = 0
             out = model(data_G2.edge_index, data_G2.edge_type)
             out_test = out[en_index_G3_list_test_bef,:]  # 1544*106
+            print("calculate score... ...")
             for i in range(out_test.shape[0]):
                 acc_temp = 0
                 out_line = out_test[i,:] # 106

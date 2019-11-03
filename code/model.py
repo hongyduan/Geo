@@ -12,6 +12,7 @@ class Model(torch.nn.Module):
         self.rgcn_layer_2 = RGCN_Layer(args.node_dim, 1, args.hidden_dim, args.num_classes, data.num_relations, args.num_bases)
         self.relu_use = args.relu_use
     def forward(self, edge_index, edge_type):
+        print("in forward... ...")
         x = self.rgcn_layer_1(self.node_embedding_g2, edge_index, edge_type)
         if self.relu_use == 1:
             x = F.relu(x)
