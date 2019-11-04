@@ -35,17 +35,11 @@ class Model(torch.nn.Module):
             concept_x_g1 = F.relu(concept_x_g1)
         if args.concept_layer == 0:
             entity_x_g1 = self.all_node_embedding[0:self.num_nodes_g2, :]
-            # if args.relu_use_concept_layer == 1:
-            #     x_g1 = F.relu(x_g1)
-            #     # x_g1[self.num_nodes_g2:x_g1.shape[0],:] = F.relu(x_g1[self.num_nodes_g2:x_g1.shape[0],:])
             print("finished concept layer... ...")
 
         if args.RGCN_layer == 1:
             print("begin RGCN layer... ...")
             # RGCN-layer
-            # node_embedding_g2 = x_g1[0:self.num_nodes_g2,:]
-            # node_embedding_g2 = self.all_node_embedding[0:self.num_nodes_g2, :]
-
             x_g2 = self.rgcn_layer_1(entity_x_g1, edge_index_g2, edge_type_g2)
 
             if args.relu_use_rgcn_layer1 == 1:
