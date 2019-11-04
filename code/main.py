@@ -26,6 +26,7 @@ def parse_args(args=None):
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
     parser.add_argument('--leaf_node_entity', action='store_true', default=True)
     parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--init_checkpoint', default=None, type=str)
 
     parser.add_argument('--relu_use_rgcn_layer1', type=int, default=1)
     parser.add_argument('--relu_use_concept_layer', type=int, default=1)
@@ -33,7 +34,7 @@ def parse_args(args=None):
     parser.add_argument('--concept_clamp', type=int, default=1)
     parser.add_argument('--weights_clamp', type=int, default=1)
 
-    parser.add_argument('--sigmoid', type=int, default=0)  # 0: softmax; 1:sigmoid
+    parser.add_argument('--sigmoid', type=int, default=1)  # 0: softmax; 1:sigmoid
     parser.add_argument('--which_dataset', type=int, default=0)
 
 
@@ -59,7 +60,11 @@ def save_model(model, optimizer, args, biggest_score):
     argparse_dict = vars(args)
     with open(os.path.join(args.save_path_g2, 'config.json'), 'w') as fjson:
         json.dump(argparse_dict, fjson)
+    with open(os.path.join(args.save_path_g2, 'final_test_score.json'), 'w') as scorejson:
+        json.dump(biggest_score, scorejson)
+
     torch.save({
+        'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict()},
         os.path.join(args.save_path_g2, 'checkpoint_en')
     )
@@ -69,8 +74,7 @@ def save_model(model, optimizer, args, biggest_score):
         os.path.join(args.save_path_g2, 'node_embedding'),
         all_node_embedding
     )
-    with open(os.path.join(args.save_path_g2, 'final_test_score.json'), 'w') as scorejson:
-        json.dump(biggest_score, scorejson)
+
 
 
 def sample(args, target_train, g2_num_nodes):
