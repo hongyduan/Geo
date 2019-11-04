@@ -77,6 +77,7 @@ def save_model(model, optimizer, args, biggest_score):
 
 
 
+
 def sample(args, target_train, g2_num_nodes):
     sample_index = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
     sample_index_min = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
