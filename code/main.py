@@ -31,9 +31,6 @@ def parse_args(args=None):
     parser.add_argument('--cuda', type=int, default=0)
     parser.add_argument('--init_checkpoint', type=int, default=0)
 
-    parser.add_argument('--init_embedding_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/node_embedding.npy")
-    parser.add_argument('--init_biggest_score', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/final_test_score.json")
-
     parser.add_argument('--relu_use_rgcn_layer1', type=int, default=1)
     parser.add_argument('--relu_use_concept_layer', type=int, default=1)
 
@@ -194,7 +191,7 @@ def main(args):
         # load the saved model, if init_checkpoint is true. Otherwise initial model.
         if args.init_checkpoint == 1:
             logging.info("Loading model and optimizer... ...")
-            with open(args.init_biggest_score) as fin:  # 26078
+            with open(os.path.join(args.save_path_g2, 'final_test_score.json')) as fin:  # 26078
                 for line in fin:
                     big_score = float(line)
             checkpoint = torch.load(os.path.join(args.save_path_g2, 'checkpoint'))
