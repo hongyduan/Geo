@@ -3,7 +3,6 @@ from torch.nn import Parameter as Param
 from inits import uniform
 import torch
 
-
 class RGCN_Layer(MessagePassing):
     def __init__(self, dim_node, flag_of_x, in_channels, out_channels, num_relations, num_bases,
                  root_weight=True, bias=True,**kwargs):
@@ -17,7 +16,6 @@ class RGCN_Layer(MessagePassing):
 
         self.basis = Param(torch.Tensor(num_bases, in_channels, out_channels))
         self.att = Param(torch.Tensor(num_relations, num_bases))
-
 
         if root_weight:
             if flag_of_x == 1:
