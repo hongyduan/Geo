@@ -26,9 +26,11 @@ def parse_args(args=None):
     parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save")
     parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
     parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
-    parser.add_argument('--leaf_node_entity', action='store_true', default=True)
-    parser.add_argument('--cuda', action='store_true', default=False)
-    parser.add_argument('--init_checkpoint', action='store_true', default=True)
+
+    parser.add_argument('--leaf_node_entity', type=int, default=1)
+    parser.add_argument('--cuda', type=int, default=0)
+    parser.add_argument('--init_checkpoint', type=int, default=0)
+
     parser.add_argument('--init_embedding_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/node_embedding.npy")
     parser.add_argument('--init_biggest_score', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/final_test_score.json")
 
@@ -183,14 +185,14 @@ def main(args):
 
         logging.info("load data and pre-process data... ...")
         target_train, target_test, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef = load_data_and_pre_data(args)
-        device = torch.device('cuda' if args.cuda == True else 'cpu')
+        device = torch.device('cuda' if args.cuda == 1 else 'cpu')
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
         target_test = target_test.to(device)
 
 
         # load the saved model, if init_checkpoint is true. Otherwise initial model.
-        if args.init_checkpoint:
+        if args.init_checkpoint == 1:
             logging.info("Loading model and optimizer... ...")
             with open(args.init_biggest_score) as fin:  # 26078
                 for line in fin:

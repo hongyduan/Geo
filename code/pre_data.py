@@ -275,7 +275,7 @@ class Pre_Data():
         G1_node_embedding_ = self.G1_node_embedding()
         G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, left_common = G1_node_embedding_
         edge_index_G1_, edge_index_G1_sub2_, edge_index_G1_sub1_ = self.edge_index_G1()
-        if self.leaf_node_entity:
+        if self.leaf_node_entity == 1:
             G1_x = self.all_node_embedding
             G1_edge_index = edge_index_G1_
         else:
