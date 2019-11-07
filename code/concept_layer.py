@@ -1,6 +1,7 @@
 
 from torch_geometric.nn import MessagePassing
 
+
 class Concept_Layer(MessagePassing):
     # def __init__(self, in_chanels, out_chanels, aggr='add', **kwargs):
     def __init__(self, aggr='add', **kwargs):
