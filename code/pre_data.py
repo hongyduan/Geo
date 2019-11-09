@@ -196,6 +196,14 @@ class Pre_Data():
                 if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new_is_a[key]:
                     G1_graph_sub2_new_is_a[key].append(int(value-len(self.node2id_G2)))
 
+        G1_graph_sub2_new_is_a_mini = OrderedDict()
+        for key, values in self.G1_graph_sub2_original.items():
+            if key not in G1_graph_sub2_new_is_a_mini.keys():
+                G1_graph_sub2_new_is_a_mini[key] = list()
+            for value in values:
+                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new_is_a_mini[key]:
+                    G1_graph_sub2_new_is_a_mini[key].append(int(value-len(self.node2id_G2)))
+
         G1_graph_sub2_new_mini = OrderedDict()
         for key, values in self.G1_graph_sub2_original.items():
             if key not in G1_graph_sub2_new_mini.keys():
@@ -218,6 +226,7 @@ class Pre_Data():
             en_index_G3_list.append(int(i))
         en_index_G3_list_train_bef = en_index_G3_list[0:6178]  # 6178
         en_index_G3_list_test_bef = en_index_G3_list[6178:len(en_index_G3_list)]  # 1545
+
 
         en_index_G3_list = torch.tensor(en_index_G3_list, dtype=torch.long)  # 6178+1544 entity
         en_index_G3_list_train = torch.tensor(en_index_G3_list_train_bef, dtype=torch.long)  # 6178 entity for train
@@ -261,7 +270,8 @@ class Pre_Data():
         for inn in en_index_G3_list_test_bef:
             max_1_test = 0
             # for value in G1_graph_sub2_new[str(inn)]:
-            for value in G1_graph_sub2_new_is_a[str(inn)]:
+            # for value in G1_graph_sub2_new_is_a[str(inn)]:
+            for value in G1_graph_sub2_new_is_a_mini[str(inn)]:
                 target_test[i, int(value)] = 1
                 max_1_test = max_1_test +1
             if max_1_test>final_max_1_test:
