@@ -91,43 +91,99 @@ def save_model(model, optimizer, args, biggest_score):
     )
 
 
-def sample(args, target_train, g2_num_nodes):
-    sample_index = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
-    sample_index_min = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
-    sample_label = torch.zeros((target_train.size(0), args.sample_num))  # 6178*150
-    target_train_nonzero = target_train.nonzero()
-    start = -1
-    tmp_id = 0
-    tmp_dict = OrderedDict()
+def sample(args, target_small, target_big, g2_num_nodes, mode):
+    if mode == "train":
+        sample_index = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
+        sample_index_min = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
+        sample_label = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
+        target_train_nonzero = target_big.nonzero()
+        start = -1
+        tmp_id = 0
+        tmp_dict = OrderedDict()
 
-    for item in target_train_nonzero:
-        if item[0] == start:
-            sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
-            sample_index_min[item[0], tmp_id] = item[1]
-            sample_label[item[0], tmp_id] = 1
-            tmp_dict[int(item[0])].append(int(item[1]))
-            tmp_id = tmp_id + 1
+        for item in target_train_nonzero:
+            if item[0] == start:
+                sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+                sample_index_min[item[0], tmp_id] = item[1]
+                sample_label[item[0], tmp_id] = 1
+                tmp_dict[int(item[0])].append(int(item[1]))
+                tmp_id = tmp_id + 1
 
-        else:
-            tmp_dict[int(item[0])] = list()
-            start = item[0]
-            tmp_id = 0
-            sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
-            sample_index_min[item[0], tmp_id] = item[1]
-            sample_label[item[0], tmp_id] = 1
-            tmp_dict[int(item[0])].append(int(item[1]))
-            tmp_id = tmp_id + 1
+            else:
+                tmp_dict[int(item[0])] = list()
+                start = item[0]
+                tmp_id = 0
+                sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+                sample_index_min[item[0], tmp_id] = item[1]
+                sample_label[item[0], tmp_id] = 1
+                tmp_dict[int(item[0])].append(int(item[1]))
+                tmp_id = tmp_id + 1
 
-    for key, values in tmp_dict.items():
-        a = args.sample_num - len(values)
-        list1 = [x for x in range(target_train.shape[1])]
-        tt = list(set(list1).difference(set(values)))
-        slice = random.sample(tt, a)
-        start_id = len(values)
-        for ii in slice:
-            sample_index[key, start_id] = ii + g2_num_nodes
-            sample_index_min[key, start_id] = ii
-            start_id = start_id + 1
+        for key, values in tmp_dict.items():
+            a = args.sample_num - len(values)
+            list1 = [x for x in range(target_big.shape[1])]
+            tt = list(set(list1).difference(set(values)))
+            slice = random.sample(tt, a)
+            start_id = len(values)
+            for ii in slice:
+                sample_index[key, start_id] = ii + g2_num_nodes
+                sample_index_min[key, start_id] = ii
+                start_id = start_id + 1
+    elif mode == "test":
+        sample_index = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
+        sample_index_min = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
+        sample_label = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
+        target_train_nonzero = target_small.nonzero()
+        start = -1
+        tmp_id = 0
+        tmp_dict = OrderedDict()
+
+        for item in target_train_nonzero:
+            if item[0] == start:
+                sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+                sample_index_min[item[0], tmp_id] = item[1]
+                sample_label[item[0], tmp_id] = 1
+                tmp_dict[int(item[0])].append(int(item[1]))
+                tmp_id = tmp_id + 1
+
+            else:
+                tmp_dict[int(item[0])] = list()
+                start = item[0]
+                tmp_id = 0
+                sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
+                sample_index_min[item[0], tmp_id] = item[1]
+                sample_label[item[0], tmp_id] = 1
+                tmp_dict[int(item[0])].append(int(item[1]))
+                tmp_id = tmp_id + 1
+
+        # big
+        target_train_nonzero_tmp = target_big.nonzero()
+        start_tmp = -1
+        tmp_id_tmp = 0
+        tmp_dict_tmp = OrderedDict()
+        for item in target_train_nonzero_tmp:
+            if item[0] == start_tmp:
+                tmp_dict_tmp[int(item[0])].append(int(item[1]))
+                tmp_id_tmp = tmp_id_tmp + 1
+            else:
+                tmp_dict_tmp[int(item[0])] = list()
+                start_tmp = item[0]
+                tmp_id_tmp = 0
+                tmp_dict_tmp[int(item[0])].append(int(item[1]))
+                tmp_id_tmp = tmp_id_tmp + 1
+
+        for key, values in tmp_dict_tmp.items():
+            a = args.sample_num - len(tmp_dict[key])
+            list1 = [x for x in range(target_big.shape[1])]
+            tt = list(set(list1).difference(set(values)))
+            slice = random.sample(tt, a)
+            start_id = len(tmp_dict[key])
+            for ii in slice:
+                sample_index[key, start_id] = ii + g2_num_nodes
+                sample_index_min[key, start_id] = ii
+                start_id = start_id + 1
+
+
     return sample_index, sample_index_min, sample_label  # 6178*150
 
 
@@ -139,9 +195,9 @@ def load_data_and_pre_data(args):
     G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test = pre_data.G2()
     # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*200;  en_embedding_G3_train: 6178*200; en_embedding_G3_test: 1545*200
     # target_train, target_test, G1_graph_sub2_new, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
-    target_train, target_test, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
+    target_train, target_train_small, target_test, target_test_big, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
     all_node_embedding = pre_data.embedding()  # 26989*200
-    return target_train, target_test, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef
+    return target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef
 
 
 def draw(args, test_score_list, train_loss_list):
@@ -181,7 +237,7 @@ def main(args):
         test_score_list = []
 
         logging.info("load data and pre-process data... ...")
-        target_train, target_test, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef = load_data_and_pre_data(args)
+        target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef = load_data_and_pre_data(args)
         device = torch.device('cuda' if args.cuda == 1 else 'cpu')
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
@@ -209,8 +265,8 @@ def main(args):
             start = datetime.datetime.now()
             logging.info("_________________ epoch:{} _________________ ".format(epoch))
             logging.info("Randomly sample {} types for each entity( {} train entities and {} test entities) ... ...".format(args.sample_num, target_train.shape[0], target_test.shape[0]))
-            sample_index_train, sample_index_min_train, sample_label_train = sample(args, target_train, data_G2.num_nodes)  # 6178*150
-            sample_index_test, sample_index_min_test, sample_label_test = sample(args, target_test, data_G2.num_nodes)  # 1544*150
+            sample_index_train, sample_index_min_train, sample_label_train = sample(args, target_train_small, target_train, data_G2.num_nodes, "train")  # 6178*150
+            sample_index_test, sample_index_min_test, sample_label_test = sample(args, target_test, target_test_big, data_G2.num_nodes, "test")  # 1544*150
 
             # print("before optimizer, the node_embedding:{}".format(torch.mean(model.all_node_embedding ** 2)))
             logging.info("training... ...")
@@ -235,10 +291,11 @@ def main(args):
             acc = 0
             out_test = model(args, data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index_test, sample_index_min_test)  # 1544*150
 
-            logging.info("calculate test score... ...")
+            # accuracy
+            logging.info("calculate accuracy... ...")
             for i in range(out_test.shape[0]):  # 1544
                 acc_temp = 0
-                out_line = out_test[i,:] # 150
+                out_line = out_test[i,:]  # 150
                 target_line = sample_label_test[i,:]
                 aim_top_pos = torch.nonzero(target_line)
                 aim_top_num = aim_top_pos.shape[0]
@@ -251,19 +308,31 @@ def main(args):
                 acc = acc_temp/aim_top_num + acc
             final_acc = acc/len(en_index_G3_list_test_bef)
             test_score_list.append(final_acc)
-            logging.info("test_score:{}".format(final_acc))
+            logging.info("accuracy:{}".format(final_acc))
             if final_acc > big_score:
-                logging.info("current score is bigger, before:{}, current:{}, save model... ...".format(big_score, final_acc))
+                logging.info("current accuracy is bigger, before:{}, current:{}, save model... ...".format(big_score, final_acc))
                 big_score = final_acc
                 save_model(model, optimizer, args, big_score)
             else:
-                logging.info("biggest score:{} ... ".format(big_score))
+                logging.info("biggest accuracy:{} ... ".format(big_score))
+
+            # MRR
+            logging.info("calculate MRR... ...")
+
+
+
+
+
+
+
+
+
             end = datetime.datetime.now()
             logging.info("running time in epoch {} is {} seconds:".format(epoch, str((end - start).seconds)))
 
         logging.info("finished {} epochs... ...".format(args.epoch))
-        logging.info("mean score:{} for {} epochs... ...".format(np.mean(test_score_list), args.epoch))
-        logging.info("biggest score:{} ... for {} epochs... ...".format(big_score, args.epoch))
+        logging.info("mean accuracy:{} for {} epochs... ...".format(np.mean(test_score_list), args.epoch))
+        logging.info("biggest accuracy:{} ... for {} epochs... ...".format(big_score, args.epoch))
         logging.info("ploting... ...")
         draw(args, test_score_list, train_loss_list)
         logging.info("_________________ finished {} epochs _________________ ".format(args.epoch))

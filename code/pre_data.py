@@ -247,14 +247,13 @@ class Pre_Data():
             dim=0,
             index=en_index_G3_list_test
         )
+
+        # big
         target_train = torch.zeros(len(en_index_G3_list_train_bef), len(self.type_node2id_G1))
-        # target_train = torch.zeros(len(en_index_G3_list_train_bef), self.type_node2id_G1)
         i=0
-        max_1_train = 0
         final_max_1_train = 0  # 113
         for inn in en_index_G3_list_train_bef:
             max_1_train = 0
-            # for value in G1_graph_sub2_new[str(inn)]:
             for value in G1_graph_sub2_new_is_a[str(inn)]:
                 target_train[i,int(value)] = 1
                 max_1_train = max_1_train + 1
@@ -262,15 +261,25 @@ class Pre_Data():
                 final_max_1_train = max_1_train
             i = i + 1
 
-        max_1_test = 0
-        final_max_1_test = 0  # 113
+        # small
+        target_train_small = torch.zeros(len(en_index_G3_list_train_bef), len(self.type_node2id_G1))
+        i=0
+        final_max_1_train_s = 0  # 3
+        for inn in en_index_G3_list_train_bef:
+            max_1_train_s = 0
+            for value in G1_graph_sub2_new_is_a_mini[str(inn)]:
+                target_train_small[i,int(value)] = 1
+                max_1_train_s = max_1_train_s + 1
+            if max_1_train_s>final_max_1_train_s:
+                final_max_1_train_s = max_1_train_s
+            i = i + 1
+
+        # small
+        final_max_1_test = 0  # 2
         target_test = torch.zeros(len(en_index_G3_list_test_bef), len(self.type_node2id_G1))
-        # target_test = torch.zeros(len(en_index_G3_list_test_bef), self.type_node2id_G1)
         i=0
         for inn in en_index_G3_list_test_bef:
             max_1_test = 0
-            # for value in G1_graph_sub2_new[str(inn)]:
-            # for value in G1_graph_sub2_new_is_a[str(inn)]:
             for value in G1_graph_sub2_new_is_a_mini[str(inn)]:
                 target_test[i, int(value)] = 1
                 max_1_test = max_1_test +1
@@ -278,8 +287,20 @@ class Pre_Data():
                 final_max_1_test = max_1_test
             i = i + 1
 
-        # return target_train, target_test, G1_graph_sub2_new, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
-        return target_train, target_test, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
+        # big
+        final_max_1_test_b = 0  # 113
+        target_test_big = torch.zeros(len(en_index_G3_list_test_bef), len(self.type_node2id_G1))
+        i=0
+        for inn in en_index_G3_list_test_bef:
+            max_1_test_b = 0
+            for value in G1_graph_sub2_new_is_a[str(inn)]:
+                target_test_big[i, int(value)] = 1
+                max_1_test_b = max_1_test_b +1
+            if max_1_test_b>final_max_1_test_b:
+                final_max_1_test_b = max_1_test_b
+            i = i + 1
+
+        return target_train, target_train_small, target_test, target_test_big, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
 
     def G1(self):
         G1_node_embedding_ = self.G1_node_embedding()
