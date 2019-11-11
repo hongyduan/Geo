@@ -224,6 +224,7 @@ def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_sc
             argsort_list = argsort.numpy().tolist()
             argsort_list_tmp = [i for i in argsort_list if i not in t_list]
             argsort_tensor_tmp = torch.Tensor(argsort_list_tmp)
+            cur_tmp = cur_tmp.to(torch.float32)
             ranking_tmp = (argsort_tensor_tmp == cur_tmp).nonzero()
             assert ranking_tmp.size(0) == 1
             ranking_tmp = ranking_tmp.item() + 1
