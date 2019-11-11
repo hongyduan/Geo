@@ -214,7 +214,7 @@ def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_sc
         aim_top_num = aim_top_pos.shape[0]
         out_line = out_test[i, :]  # 150
         argsort = torch.argsort(out_line, dim=0, descending=True)
-        print("for debug")
+
         MRR_tmp = 0
         for cur_tmp in aim_top_pos:
             aim_top_pos_copy = aim_top_pos.squeeze(1)
