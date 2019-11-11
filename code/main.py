@@ -30,6 +30,8 @@ def parse_args(args=None):
     parser.add_argument('--leaf_node_entity', type=int, default=1)
     parser.add_argument('--cuda', type=int, default=0)
     parser.add_argument('--init_checkpoint', type=int, default=0)
+    parser.add_argument('--specific_test', type=int, default=1)
+    parser.add_argument('--specific_train', type=int, default=1)
 
     parser.add_argument('--relu_use_rgcn_layer1', type=int, default=1)
     parser.add_argument('--relu_use_concept_layer', type=int, default=1)
@@ -92,7 +94,7 @@ def save_model(model, optimizer, args, biggest_score):
 
 
 def sample(args, target_small, target_big, g2_num_nodes, mode):
-    if mode == "train":
+    if (mode == "train" and args.specific_train == 0) or (mode == "test" and args.specific_test == 0):
         sample_index = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
         sample_index_min = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
         sample_label = torch.zeros((target_big.size(0), args.sample_num))  # 6178*150
@@ -129,7 +131,8 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
                 sample_index[key, start_id] = ii + g2_num_nodes
                 sample_index_min[key, start_id] = ii
                 start_id = start_id + 1
-    elif mode == "test":
+
+    elif (mode=="train" and args.specific_train == 1) or (mode == "test" and args.specific_test == 1):
         sample_index = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
         sample_index_min = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
         sample_label = torch.zeros((target_small.size(0), args.sample_num))  # 6178*150
@@ -137,7 +140,6 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
         start = -1
         tmp_id = 0
         tmp_dict = OrderedDict()
-
         for item in target_train_nonzero:
             if item[0] == start:
                 sample_index[item[0], tmp_id] = item[1] + g2_num_nodes
@@ -155,9 +157,9 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
                 sample_label[item[0], tmp_id] = 1
                 tmp_dict[int(item[0])].append(int(item[1]))
                 tmp_id = tmp_id + 1
-
         # big
         target_train_nonzero_tmp = target_big.nonzero()
+        ttt = target_train_nonzero_tmp[0:10,:]
         start_tmp = -1
         tmp_id_tmp = 0
         tmp_dict_tmp = OrderedDict()
@@ -171,7 +173,6 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
                 tmp_id_tmp = 0
                 tmp_dict_tmp[int(item[0])].append(int(item[1]))
                 tmp_id_tmp = tmp_id_tmp + 1
-
         for key, values in tmp_dict_tmp.items():
             a = args.sample_num - len(tmp_dict[key])
             list1 = [x for x in range(target_big.shape[1])]
@@ -182,7 +183,6 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
                 sample_index[key, start_id] = ii + g2_num_nodes
                 sample_index_min[key, start_id] = ii
                 start_id = start_id + 1
-
 
     return sample_index, sample_index_min, sample_label  # 6178*150
 
@@ -318,6 +318,7 @@ def main(args):
 
             # MRR
             logging.info("calculate MRR... ...")
+
 
 
 
