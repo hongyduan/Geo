@@ -21,7 +21,8 @@ def parse_args(args=None):
     parser.add_argument('--type_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/type_embedding/node_embedding.npy")
     parser.add_argument('--entity_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/entity_embedding/node_embedding.npy")
     parser.add_argument('--entity_relation_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/entity_embedding/node_re_embedding.npy")
-    parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_result")
+    # parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_result")
+    parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_new")
     parser.add_argument('--data_path_bef', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago")
     parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save")
     parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
@@ -193,15 +194,16 @@ def sample(args, target_small, target_big, g2_num_nodes, mode):
 
 def load_data_and_pre_data(args):
     pre_data = Pre_Data(args)
-    # G1_node_embedding = [G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity] # G1_node_embedding_type: 911*200;   G1_node_embedding_type_small:106*200;   G1_node_embedding_entity:8948*200;   data_G1:2*17429;   data_G1_val:2*499;   data_G1_test:2*996
-    G1_node_embedding, G1_node_embedding_type, G1_node_embedding_type_small, G1_node_embedding_entity, data_G1, data_G1_val, data_G1_test, left_common, G1_graph_sub1 = pre_data.G1()
-    # G2_edge_index: 664254*2;   G2_node_embedding_: 26078*200;   data_G2: 2*664254;   data_G2_val: 2*499;  data_G2_test: 2*996
-    G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test = pre_data.G2()
-    # G1_graph_sub2_new: 7723; en_index_G3_list_train_bef: 6178; en_index_G3_list_test_bef: 1545; en_embedding_G3: 7723*200;  en_embedding_G3_train: 6178*200; en_embedding_G3_test: 1545*200
-    # target_train, target_test, G1_graph_sub2_new, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
-    target_train, target_train_small, target_test, target_test_big, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test = pre_data.G3()
+    train_edge_clear = pre_data.train_edge_clear
+    train_edge = pre_data.train_edge
+    test_edge_clear = pre_data.test_edge_clear
+    test_edge = pre_data.test_edge
+
+    data_G1, left_common = pre_data.G1()
+    data_G2 = pre_data.G2()
+    target_train, target_train_small, target_test, target_test_big, en_index_G3_list_train_bef, en_index_G3_list_test_bef = pre_data.G3()
     all_node_embedding = pre_data.embedding()  # 26989*200
-    return target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef
+    return target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef,train_edge_clear,train_edge,test_edge_clear,test_edge
 
 def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_score_list, big_score, model, optimizer, test_mrr_list, big_mrr, acc, top3, big_top3, test_top3_list):
 
@@ -355,7 +357,7 @@ def main(args):
         test_top3_list = []
 
         logging.info("load data and pre-process data... ...")
-        target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef = load_data_and_pre_data(args)
+        target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef,train_edge_clear,train_edge,test_edge_clear,test_edge = load_data_and_pre_data(args)
         device = torch.device('cuda' if args.cuda == 1 else 'cpu')
         data_G2 = data_G2.to(device)
         target_train = target_train.to(device)
@@ -390,7 +392,7 @@ def main(args):
         for epoch in range(args.epoch):
             start = datetime.datetime.now()
             logging.info("_________________ epoch:{} _________________ ".format(epoch))
-            logging.info("Randomly sample {} types for each entity( {} train entities and {} test entities) ... ...".format(args.sample_num, target_train.shape[0], target_test.shape[0]))
+            logging.info("Randomly sample {} types for each entity( {} train entities, {} train edges contained {} dumplicate edges;  {} test entities, {} test edges contained {} dubplicate edges) ... ...".format(args.sample_num, target_train.shape[0], train_edge, train_edge-train_edge_clear, target_test.shape[0], test_edge, test_edge-test_edge_clear))
             sample_index_train, sample_index_min_train, sample_label_train = sample(args, target_train_small, target_train, data_G2.num_nodes, "train")  # 6178*150
             sample_index_test, sample_index_min_test, sample_label_test = sample(args, target_test, target_test_big, data_G2.num_nodes, "test")  # 1544*150
 

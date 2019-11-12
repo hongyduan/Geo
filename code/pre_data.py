@@ -1,6 +1,7 @@
 from torch_geometric.data import Data
 from collections import OrderedDict
 from load_data import Load_Data
+from load_data_new import Load_Data_NEW
 import numpy as np
 import torch
 import os
@@ -18,7 +19,14 @@ class Pre_Data():
         self.G2_test_file_name = args.G2_test_file_name
         self.leaf_node_entity = args.leaf_node_entity
         self.num_classes = args.num_classes
-        node2id_G2, relation2id_G2, type_node2id_G1, G1_graph_sub3, G1_graph_sub2_tmp, G1_graph_sub2_tmp_2, G1_graph_sub2_final, G1_graph_sub2_final_is_a, G1_graph_sub2_original, G1_graph_sub1, G1_graph_sub1_is_a, val_data, test_data = Load_Data(self.data_path, self.data_path_bef)
+        #  G1_graph_sub2_tmp_2 == G1_graph_sub2_final_is_a == G1_graph_sub2_original : G1_train, 7723entity, 8467edges
+
+        node2id_G2, relation2id_G2, type_node2id_G1, G1_graph_sub3, G1_graph_sub2_tmp_2, G1_graph_sub2_final_is_a, G1_graph_sub2_original, G1_graph_sub1, G1_graph_sub1_is_a, triples_test_G1_tmp, triples_test_G1_is_a, triples_test_G1_oroginal, list_list = Load_Data_NEW(self.data_path, self.data_path_bef)
+        self.train_edge_clear = list_list[0]
+        self.train_edge = list_list[1]
+        self.test_edge_clear = list_list[2]
+        self.test_edge = list_list[3]
+        # test, 3985 edges; 3774 entity;
         node_embedding_entity = np.load(self.entity_path)
         node_embedding_type = np.load(self.type_path)
         all_node_embedding = torch.from_numpy(np.vstack((node_embedding_entity, node_embedding_type)))
@@ -27,23 +35,13 @@ class Pre_Data():
         self.relation2id_G2 = relation2id_G2  # 34
         self.type_node2id_G1 = type_node2id_G1  # 911
         self.G1_graph_sub3 = G1_graph_sub3  # 106  ty_en
-        self.G1_graph_sub2_tmp = G1_graph_sub2_tmp
+
         self.G1_graph_sub1 = G1_graph_sub1  # 894  ty_ty
         self.G1_graph_sub1_is_a = G1_graph_sub1_is_a  # 676  ty_ty
-        # self.G1_graph_sub2_final = G1_graph_sub2_final
+
+        # G1_graph_sub2_tmp_2 == G1_graph_sub2_final_is_a == G1_graph_sub2_original
         self.G1_graph_sub2_final_is_a = G1_graph_sub2_final_is_a
-        self.G1_graph_sub2_original = G1_graph_sub2_original # 8948 en_ty
-        # for key, tmppop in G1_graph_sub2_tmp.items():
-        #     tmp_list = []
-        #     while len(tmppop) > 0:
-        #         value = tmppop[0]
-        #         if value in G1_graph_sub1.keys() and value not in tmp_list:
-        #             tmppop[0:0] = G1_graph_sub1[value]
-        #             self.G1_graph_sub2_final[key][0:0] = G1_graph_sub1[value]
-        #             self.G1_graph_sub2_final[key] = list(set(self.G1_graph_sub2_final[key]))
-        #             tmppop = list(set(tmppop))
-        #         tmppop.remove(value)
-        #         tmp_list.append(value)
+        self.G1_graph_sub2_original = G1_graph_sub2_original  # train, 5977 edges; 5549 entity;
         for key2, tmppop2 in G1_graph_sub2_tmp_2.items():
             tmp_list2 = []
             while len(tmppop2) > 0:
@@ -56,8 +54,20 @@ class Pre_Data():
                 tmppop2.remove(value2)
                 tmp_list2.append(value2)
 
-        self.val_data = val_data  # (triples_val_G1, triples_val_G2, G2_links_val)        | (triples_val_G1: en_ty/499;   triples_val_G2: en_en/19538;)
-        self.test_data = test_data  # (triples_test_G1, triples_test_G2, G2_links_test)   | (triples_test_G1: en_ty/996;  triples_test_G2: en_en/39073;
+        # triples_test_G1_tmp == triples_test_G1_is_a == triples_test_G1_oroginal
+        self.triples_test_G1_is_a = triples_test_G1_is_a
+        self.triples_test_G1_oroginal = triples_test_G1_oroginal  # train, 5977 edges; 5549 entity;
+        for key2, tmppop2 in triples_test_G1_tmp.items():
+            tmp_list2 = []
+            while len(tmppop2) > 0:
+                value2 = tmppop2[0]
+                if value2 in G1_graph_sub1_is_a.keys() and value2 not in tmp_list2:
+                    tmppop2[0:0] = G1_graph_sub1_is_a[value2]
+                    self.triples_test_G1_is_a[key2][0:0] = G1_graph_sub1_is_a[value2]
+                    self.triples_test_G1_is_a[key2] = list(set(self.triples_test_G1_is_a[key2]))
+                    tmppop2 = list(set(tmppop2))
+                tmppop2.remove(value2)
+                tmp_list2.append(value2)
 
 
 
@@ -85,36 +95,19 @@ class Pre_Data():
         return G2_node_embedding_entity
 
     def edge_index_G1(self):
-        # G1_graph_sub2(en is_instance_of ty)  G1_graph_sub1(ty1 is_a ty2)
+        # templist1(en is_instance_of ty)  G1_graph_sub1(ty1 is_a ty2)
         templist1 = list()
         for source, targets in self.G1_graph_sub2_original.items():
             for target in targets:
-                templist1.append([int(source), int(target)])
-        edge_index_G1_sub2 = torch.tensor(templist1, dtype=torch.long)  # edges: 9962
+                templist1.append([int(source), int(target)]) # edges: 5977
         templist2 = list()
         for source, targets in self.G1_graph_sub1.items():
             for target in targets:
                 templist2.append([int(source), int(target)])
                 templist1.append([int(source), int(target)])
         edge_index_G1_sub1 = torch.tensor(templist2, dtype=torch.long)  # edges: 8962
-        edge_index_G1 = torch.tensor(templist1, dtype=torch.long)
-        return edge_index_G1, edge_index_G1_sub2, edge_index_G1_sub1
-
-    def edge_index_G1_val_test(self):
-        # G1_val: en_ty/499; G1_test: en_ty/996
-        G1_val = self.val_data[0]
-        G1_test = self.test_data[0]
-        templist = list()
-        for source, targets in G1_val.items():
-            for target in targets:
-                templist.append([int(source), int(target)])
-        G1_edge_index_val = torch.tensor(templist, dtype=torch.long)
-        templist = list()
-        for source, targets in G1_test.items():
-            for target in targets:
-                templist.append([int(source), int(target)])
-        G1_edge_index_test = torch.tensor(templist, dtype=torch.long)
-        return G1_edge_index_val, G1_edge_index_test
+        edge_index_G1 = torch.tensor(templist1, dtype=torch.long)  # edge_index_G1_sub1 + edge_index_G1_sub2
+        return edge_index_G1, edge_index_G1_sub1
 
     def edge_index_attr_G2(self):
         # G2_graph(en1 relation en2)
@@ -153,27 +146,6 @@ class Pre_Data():
 
         return edge_index_G2, edge_attr_G2, edge_type_G2, num_relations
 
-    def edge_index_attr_G2_val_test(self,file_name):
-        f = open(os.path.join(self.data_path, file_name), 'r')
-        num_lines = len(f.readlines())
-        i = 0
-        templist_index = [None] * num_lines
-        edge_attr_G2_val_test = torch.empty(num_lines, self.dim)
-        G2_relation_embedding = np.load(self.entity_relation_path)
-        with open(os.path.join(self.data_path, file_name)) as fin:
-            for line in fin:
-                en1, r, en2 = line.strip().split('\t')
-                en1id = self.node2id_G2[en1]
-                rid = self.relation2id_G2[r]
-                en2id = self.node2id_G2[en2]
-
-                templist_index[i] = [int(en1id), int(en2id)]
-                edge_attr_G2_val_test[i] = torch.from_numpy(G2_relation_embedding[int(rid)]).unsqueeze(0)
-                i = i + 1
-        edge_index_G2_val_test = torch.tensor(templist_index, dtype=torch.long)  # edges: 19538
-        edge_attr_G2_val_test = edge_attr_G2_val_test  # attr: 19538*200
-        return edge_index_G2_val_test, edge_attr_G2_val_test
-
     def G3(self):
         ty_index_G3 = list(self.G1_graph_sub3.keys())
         ty_index_G3_dict = OrderedDict()
@@ -181,72 +153,50 @@ class Pre_Data():
         for i in ty_index_G3:
             ty_index_G3_dict[i] = int(ind)
             ind = ind + 1
-        # G1_graph_sub2_new = OrderedDict()
-        # for key, values in self.G1_graph_sub2_final.items():
-        #     if key not in G1_graph_sub2_new.keys():
-        #         G1_graph_sub2_new[key] = list()
-        #     for value in values:
-        #         if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new[key]:
-        #             G1_graph_sub2_new[key].append(int(value-len(self.node2id_G2)))
-        G1_graph_sub2_new_is_a = OrderedDict()
+        G1_graph_sub2_is_a_new = OrderedDict()
         for key, values in self.G1_graph_sub2_final_is_a.items():
-            if key not in G1_graph_sub2_new_is_a.keys():
-                G1_graph_sub2_new_is_a[key] = list()
+            if key not in G1_graph_sub2_is_a_new.keys():
+                G1_graph_sub2_is_a_new[key] = list()
             for value in values:
-                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new_is_a[key]:
-                    G1_graph_sub2_new_is_a[key].append(int(value-len(self.node2id_G2)))
+                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_is_a_new[key]:
+                    G1_graph_sub2_is_a_new[key].append(int(value-len(self.node2id_G2)))
 
-        G1_graph_sub2_new_is_a_mini = OrderedDict()
+        G1_graph_sub2_original_new = OrderedDict()
         for key, values in self.G1_graph_sub2_original.items():
-            if key not in G1_graph_sub2_new_is_a_mini.keys():
-                G1_graph_sub2_new_is_a_mini[key] = list()
+            if key not in G1_graph_sub2_original_new.keys():
+                G1_graph_sub2_original_new[key] = list()
             for value in values:
-                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_new_is_a_mini[key]:
-                    G1_graph_sub2_new_is_a_mini[key].append(int(value-len(self.node2id_G2)))
+                if int(value-len(self.node2id_G2)) not in G1_graph_sub2_original_new[key]:
+                    G1_graph_sub2_original_new[key].append(int(value-len(self.node2id_G2)))
 
-        G1_graph_sub2_new_mini = OrderedDict()
-        for key, values in self.G1_graph_sub2_original.items():
-            if key not in G1_graph_sub2_new_mini.keys():
-                G1_graph_sub2_new_mini[key] = list()
+        triples_test_G1_is_a_new = OrderedDict()
+        for key, values in self.triples_test_G1_is_a.items():
+            if key not in triples_test_G1_is_a_new.keys():
+                triples_test_G1_is_a_new[key] = list()
             for value in values:
-                if ty_index_G3_dict[value] not in G1_graph_sub2_new_mini[key]:
-                    G1_graph_sub2_new_mini[key].append(int(ty_index_G3_dict[value]))
+                if int(value-len(self.node2id_G2)) not in triples_test_G1_is_a_new[key]:
+                    triples_test_G1_is_a_new[key].append(int(value-len(self.node2id_G2)))
 
-        G1_graph_sub2_new_mini_is_a = OrderedDict()
-        for key, values in self.G1_graph_sub2_original.items():
-            if key not in G1_graph_sub2_new_mini_is_a.keys():
-                G1_graph_sub2_new_mini_is_a[key] = list()
+        triples_test_G1_new = OrderedDict()
+        for key, values in self.triples_test_G1_oroginal.items():
+            if key not in triples_test_G1_new.keys():
+                triples_test_G1_new[key] = list()
             for value in values:
-                if ty_index_G3_dict[value] not in G1_graph_sub2_new_mini_is_a[key]:
-                    G1_graph_sub2_new_mini_is_a[key].append(int(ty_index_G3_dict[value]))
+                if int(value-len(self.node2id_G2)) not in triples_test_G1_new[key]:
+                    triples_test_G1_new[key].append(int(value-len(self.node2id_G2)))
 
-        en_index_G3 = list(self.G1_graph_sub2_original.keys())
+
+        en_index_G3 = list(self.G1_graph_sub2_original.keys())   # train: 5549 entity, 5977 edges
         en_index_G3_list = list()
         for i in en_index_G3:
             en_index_G3_list.append(int(i))
-        en_index_G3_list_train_bef = en_index_G3_list[0:6178]  # 6178
-        en_index_G3_list_test_bef = en_index_G3_list[6178:len(en_index_G3_list)]  # 1545
+        en_index_G3_list_train_bef = en_index_G3_list
 
-
-        en_index_G3_list = torch.tensor(en_index_G3_list, dtype=torch.long)  # 6178+1544 entity
-        en_index_G3_list_train = torch.tensor(en_index_G3_list_train_bef, dtype=torch.long)  # 6178 entity for train
-        en_index_G3_list_test = torch.tensor(en_index_G3_list_test_bef, dtype=torch.long)  # 1544 entity for test
-
-        en_embedding_G3 = torch.index_select(  # 7723*200
-            self.all_node_embedding,
-            dim=0,
-            index=en_index_G3_list
-        )
-        en_embedding_G3_train = torch.index_select(  # 6178*200
-            self.all_node_embedding,
-            dim=0,
-            index=en_index_G3_list_train
-        )
-        en_embedding_G3_test = torch.index_select(  # 1545*200
-            self.all_node_embedding,
-            dim=0,
-            index=en_index_G3_list_test
-        )
+        en_index_G3 = list(self.triples_test_G1_oroginal.keys())   # test: 3774 entity, 3985 edges
+        en_index_G3_list = list()
+        for i in en_index_G3:
+            en_index_G3_list.append(int(i))
+        en_index_G3_list_test_bef = en_index_G3_list
 
         # big
         target_train = torch.zeros(len(en_index_G3_list_train_bef), len(self.type_node2id_G1))
@@ -254,7 +204,7 @@ class Pre_Data():
         final_max_1_train = 0  # 113
         for inn in en_index_G3_list_train_bef:
             max_1_train = 0
-            for value in G1_graph_sub2_new_is_a[str(inn)]:
+            for value in G1_graph_sub2_is_a_new[str(inn)]:
                 target_train[i,int(value)] = 1
                 max_1_train = max_1_train + 1
             if max_1_train>final_max_1_train:
@@ -267,7 +217,7 @@ class Pre_Data():
         final_max_1_train_s = 0  # 3
         for inn in en_index_G3_list_train_bef:
             max_1_train_s = 0
-            for value in G1_graph_sub2_new_is_a_mini[str(inn)]:
+            for value in G1_graph_sub2_original_new[str(inn)]:
                 target_train_small[i,int(value)] = 1
                 max_1_train_s = max_1_train_s + 1
             if max_1_train_s>final_max_1_train_s:
@@ -280,7 +230,7 @@ class Pre_Data():
         i=0
         for inn in en_index_G3_list_test_bef:
             max_1_test = 0
-            for value in G1_graph_sub2_new_is_a_mini[str(inn)]:
+            for value in triples_test_G1_new[str(inn)]:
                 target_test[i, int(value)] = 1
                 max_1_test = max_1_test +1
             if max_1_test>final_max_1_test:
@@ -293,19 +243,19 @@ class Pre_Data():
         i=0
         for inn in en_index_G3_list_test_bef:
             max_1_test_b = 0
-            for value in G1_graph_sub2_new_is_a[str(inn)]:
+            for value in triples_test_G1_is_a_new[str(inn)]:
                 target_test_big[i, int(value)] = 1
                 max_1_test_b = max_1_test_b +1
             if max_1_test_b>final_max_1_test_b:
                 final_max_1_test_b = max_1_test_b
             i = i + 1
 
-        return target_train, target_train_small, target_test, target_test_big, G1_graph_sub2_new_is_a, G1_graph_sub2_new_mini, G1_graph_sub2_new_mini_is_a, en_index_G3_list_train_bef, en_index_G3_list_test_bef, en_index_G3_list_train, en_index_G3_list_test, en_embedding_G3, en_embedding_G3_train, en_embedding_G3_test
+        return target_train, target_train_small, target_test, target_test_big, en_index_G3_list_train_bef, en_index_G3_list_test_bef
 
     def G1(self):
         G1_node_embedding_ = self.G1_node_embedding()
         G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, left_common = G1_node_embedding_
-        edge_index_G1_, edge_index_G1_sub2_, edge_index_G1_sub1_ = self.edge_index_G1()
+        edge_index_G1_, edge_index_G1_sub1_ = self.edge_index_G1()
         if self.leaf_node_entity == 1:
             G1_x = self.all_node_embedding
             G1_edge_index = edge_index_G1_
@@ -313,26 +263,17 @@ class Pre_Data():
             G1_x = G1_node_embedding_type_
             G1_edge_index = edge_index_G1_sub1_
         data_G1 = Data(x = G1_x, edge_index = G1_edge_index.t().contiguous())
-        G1_edge_index_val, G1_edge_index_test = self.edge_index_G1_val_test()
-        data_G1_val = Data(edge_index = G1_edge_index_val.t().contiguous())
-        data_G1_test = Data(edge_index = G1_edge_index_test.t().contiguous())
-        G1_graph_sub1 = self.G1_graph_sub1
 
-        return G1_node_embedding_, G1_node_embedding_type_, G1_node_embedding_type_small_, G1_node_embedding_entity_, data_G1, data_G1_val, data_G1_test, left_common,G1_graph_sub1
-
-
+        return data_G1, left_common
 
     def G2(self):
         G2_node_embedding_ = self.G2_node_embedding()
         G2_x = G2_node_embedding_
         G2_edge_index, G2_edge_attr, G2_edge_type, G2_num_relations = self.edge_index_attr_G2()
         data_G2 = Data(x = G2_x, edge_index=G2_edge_index.t().contiguous(), edge_attr=G2_edge_attr, edge_type=G2_edge_type, num_relations=G2_num_relations)
-        G2_edge_index_val, G2_edge_attr_val = self.edge_index_attr_G2_val_test(self.G2_val_file_name)
-        data_G2_val = Data(edge_index=G2_edge_index_val.t().contiguous(), edge_attr=G2_edge_attr_val)
-        G2_edge_index_test, G2_edge_attr_test = self.edge_index_attr_G2_val_test(self.G2_test_file_name)
-        data_G2_test = Data(edge_index=G2_edge_index_test.t().contiguous(), edge_attr=G2_edge_attr_test)
 
-        return G2_edge_index, G2_node_embedding_, data_G2, data_G2_val, data_G2_test
+        return data_G2
+
 
     def embedding(self):
         return self.all_node_embedding
