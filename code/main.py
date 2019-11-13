@@ -17,16 +17,25 @@ def parse_args(args=None):
         description='Training and Testing Knowledge Graph Embedding Models',
         usage='train.py [<args>] [-h | --help]'
     )
+    # yago
+    parser.add_argument('--type_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/type_embedding/node_embedding.npy")
+    parser.add_argument('--entity_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/entity_embedding/node_embedding.npy")
+    parser.add_argument('--entity_relation_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/entity_embedding/node_re_embedding.npy")
+    # parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/yago_result")
+    parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/yago_new")
+    parser.add_argument('--data_path_bef', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_yago/yago")
+    parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/yago")
 
-    parser.add_argument('--type_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/type_embedding/node_embedding.npy")
-    parser.add_argument('--entity_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/entity_embedding/node_embedding.npy")
-    parser.add_argument('--entity_relation_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/entity_embedding/node_re_embedding.npy")
-    # parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_result")
-    parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago_new")
-    parser.add_argument('--data_path_bef', type=str, default="/Users/bubuying/PycharmProjects/Geo/data/yago")
-    parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save")
-    parser.add_argument('--G2_val_file_name', type=str, default="val_entity_Graph.txt")
-    parser.add_argument('--G2_test_file_name', type=str, default="test_entity_Graph.txt")
+
+    # # db
+    # parser.add_argument('--type_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/type_embedding/node_embedding.npy")
+    # parser.add_argument('--entity_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/entity_embedding/node_embedding.npy")
+    # parser.add_argument('--entity_relation_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/entity_embedding/node_re_embedding.npy")
+    # # parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/dbpedia_result")
+    # parser.add_argument('--data_path', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/dbpedia_new")
+    # parser.add_argument('--data_path_bef', type=str, default="/Users/bubuying/PycharmProjects/Geo/data_dbpedia/dbpedia")
+    # parser.add_argument('--save_path_g2', type=str, default="/Users/bubuying/PycharmProjects/Geo/save/dbpedia")
+
 
     parser.add_argument('--leaf_node_entity', type=int, default=1)
     parser.add_argument('--cuda', type=int, default=0)
@@ -75,7 +84,7 @@ def set_logger(args):
     logging.getLogger('').addHandler(console)
 
 
-def save_model(model, optimizer, args, biggest_score, biggest_mrr, biggest_top3):
+def save_model(model, optimizer, args, biggest_score, biggest_mrr, biggest_mrr_1, biggest_top3):
     argparse_dict = vars(args)
     with open(os.path.join(args.save_path_g2, 'config.json'), 'w') as fjson:
         json.dump(argparse_dict, fjson)
@@ -83,6 +92,8 @@ def save_model(model, optimizer, args, biggest_score, biggest_mrr, biggest_top3)
         json.dump(biggest_score, scorejson)
     with open(os.path.join(args.save_path_g2, 'final_test_mrr.json'), 'w') as mrrjson:
         json.dump(biggest_mrr, mrrjson)
+    with open(os.path.join(args.save_path_g2, 'final_test_mrr_1.json'), 'w') as mrr_1json:
+        json.dump(biggest_mrr_1, mrr_1json)
     with open(os.path.join(args.save_path_g2, 'final_test_top3.json'), 'w') as top3json:
         json.dump(biggest_top3, top3json)
     torch.save({
@@ -205,7 +216,41 @@ def load_data_and_pre_data(args):
     all_node_embedding = pre_data.embedding()  # 26989*200
     return target_train, target_train_small, target_test, target_test_big, all_node_embedding, data_G2, left_common, data_G1, en_index_G3_list_train_bef, en_index_G3_list_test_bef,train_edge_clear,train_edge,test_edge_clear,test_edge
 
-def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_score_list, big_score, model, optimizer, test_mrr_list, big_mrr, acc, top3, big_top3, test_top3_list):
+def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_score_list, big_score, model, optimizer, test_mrr_list, test_mrr_list_1, big_mrr, big_mrr_1, acc, top3, big_top3, test_top3_list):
+
+    # MRR another
+    logging.info("calculate MRR_1... ...")
+    MRR_final_1 = 0
+    total_num_1 = 0
+    for i in range(out_test.shape[0]):  # 1544
+        target_line = sample_label_test[i, :]
+        aim_top_pos = torch.nonzero(target_line)
+        aim_top_num = aim_top_pos.shape[0]
+        out_line = out_test[i, :]  # 150
+        argsort = torch.argsort(out_line, dim=0, descending=True)
+        total_num_1 = total_num_1 + aim_top_num
+        for cur_tmp in aim_top_pos:
+            aim_top_pos_copy = aim_top_pos.squeeze(1)
+            t_list = aim_top_pos_copy.numpy().tolist()
+            t_i = cur_tmp.item()
+            t_list.remove(t_i)
+            argsort_list = argsort.numpy().tolist()
+            argsort_list_tmp = [i for i in argsort_list if i not in t_list]
+            argsort_tensor_tmp = torch.Tensor(argsort_list_tmp)
+            cur_tmp = cur_tmp.to(torch.float32)
+            ranking_tmp = (argsort_tensor_tmp == cur_tmp).nonzero()
+            assert ranking_tmp.size(0) == 1
+            ranking_tmp = ranking_tmp.item() + 1
+            mrr_tmp = 1.0 / ranking_tmp
+            MRR_final_1 = MRR_final_1 + mrr_tmp
+    MRR_1 = MRR_final_1 / total_num_1
+    test_mrr_list_1.append(MRR_1)
+    logging.info("MRR_1:{}".format(MRR_1))
+    if MRR_1 > big_mrr_1:
+        logging.info("current MRR_1 is bigger, before:{}, current:{}... ...".format(big_mrr_1, MRR_1))
+        big_mrr_1 = MRR_1
+    else:
+        logging.info("biggest MRR_1:{} ... ".format(big_mrr_1))
 
     # MRR
     logging.info("calculate MRR... ...")
@@ -292,60 +337,31 @@ def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_sc
         logging.info(
             "current accuracy is bigger, before:{}, current:{}... ...".format(big_score, final_acc))
         big_score = final_acc
-        save_model(model, optimizer, args, big_score, big_mrr, big_top3)
+        save_model(model, optimizer, args, big_score, big_mrr, big_mrr_1, big_top3)
     else:
         logging.info("biggest accuracy:{} ... ".format(big_score))
 
-    return test_score_list, big_score, test_mrr_list, big_mrr, test_top3_list, big_top3
+    return test_score_list, big_score, test_mrr_list, test_mrr_list_1, big_mrr, big_mrr_1, test_top3_list, big_top3
 
 
 
-def draw(args, test_score_list, train_loss_list, test_mrr_list, test_top3_list):
-    x1 = range(0, args.epoch)
-    x2 = range(0, args.epoch)
-    x3 = range(0, args.epoch)
-    x4 = range(0, args.epoch)
-    y1 = test_score_list
-    y2 = train_loss_list
-    y3 = test_mrr_list
-    y4 = test_top3_list
+def draw(args, test_score_list, title, x_label, y_label, savetitle):
+    x = range(0, args.epoch)
+    y = test_score_list
+    plt.cla()
+    plt.plot(x, y, 'b*')
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    savetitle = '*' + savetitle
+    plt.savefig(os.path.join(args.save_path_g2, savetitle))
 
-    plt.subplot(2, 2, 1)
-    plt.plot(x1, y1, 'b*')
-    plt.title('Accuracy vs. epochs')
-    plt.ylabel('Accuracy')
-    plt.subplot(2, 2, 2)
-    plt.plot(x2, y2, 'b*')
-    plt.xlabel('Train loss vs. epochs')
-    plt.ylabel('Train loss')
-    plt.subplot(2, 2, 3)
-    plt.plot(x3, y3, 'b*')
-    plt.xlabel('Test MRR vs. epochs')
-    plt.ylabel('Test MRR')
-    plt.subplot(2, 2, 4)
-    plt.plot(x4, y4, 'b*')
-    plt.xlabel('Test Top@3 vs. epochs')
-    plt.ylabel('Test Top@3')
-    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_MRR_Top@3_Accuracy_*.png'))
-
-
-    plt.subplot(2, 2, 1)
-    plt.plot(x1, y1, 'b-')
-    plt.title('Accuracy vs. epochs')
-    plt.ylabel('Accuracy')
-    plt.subplot(2, 2, 2)
-    plt.plot(x2, y2, 'b-')
-    plt.xlabel('Train loss vs. epochs')
-    plt.ylabel('Train loss')
-    plt.subplot(2, 2, 3)
-    plt.plot(x3, y3, 'b-')
-    plt.xlabel('Test MRR vs. epochs')
-    plt.ylabel('Test MRR')
-    plt.subplot(2, 2, 4)
-    plt.plot(x4, y4, 'b-')
-    plt.xlabel('Test Top@3 vs. epochs')
-    plt.ylabel('Test Top@3')
-    plt.savefig(os.path.join(args.save_path_g2, 'Train_loss_MRR_Top@3_Accuracy__.png'))
+    plt.plot(x, y, 'b-')
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    savetitle = '_' + savetitle
+    plt.savefig(os.path.join(args.save_path_g2, savetitle))
 
 
 def main(args):
@@ -355,6 +371,7 @@ def main(args):
         train_loss_list = []
         test_score_list = []
         test_mrr_list = []
+        test_mrr_list_1 = []
         test_top3_list = []
 
         logging.info("load data and pre-process data... ...")
@@ -374,6 +391,9 @@ def main(args):
             with open(os.path.join(args.save_path_g2, 'final_test_mrr.json')) as fin:  # 26078
                 for line in fin:
                     big_mrr = float(line)
+            with open(os.path.join(args.save_path_g2, 'final_test_mrr_1.json')) as fin:  # 26078
+                for line in fin:
+                    big_mrr_1 = float(line)
             with open(os.path.join(args.save_path_g2, 'final_test_top3.json')) as fin:  # 26078
                 for line in fin:
                     big_top3 = float(line)
@@ -385,6 +405,7 @@ def main(args):
             logging.info("Initialing model and optimizer... ...")
             big_score = 0
             big_mrr = 0
+            big_mrr_1 = 0
             big_top3 = 0
             model = Model(args, data_G2, all_node_embedding, left_common, target_train).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learn_rate, weight_decay=0.0005)
@@ -421,7 +442,8 @@ def main(args):
             out_test = model(args, data_G2.edge_index, data_G2.edge_type, data_G1.edge_index, en_index_G3_list_test_bef, sample_index_test, sample_index_min_test)  # 1544*150
 
             # evaluation
-            test_score_list, big_score, test_mrr_list, big_mrr, test_top3_list, big_top3 = evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_score_list, big_score, model, optimizer, test_mrr_list, big_mrr, acc, top3, big_top3, test_top3_list)
+
+            test_score_list, big_score, test_mrr_list, test_mrr_list_1, big_mrr, big_mrr_1, test_top3_list, big_top3 = evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_score_list, big_score, model, optimizer, test_mrr_list, test_mrr_list_1, big_mrr, big_mrr_1, acc, top3, big_top3, test_top3_list)
             end = datetime.datetime.now()
             logging.info("running time in epoch {} is {} seconds:".format(epoch, str((end - start).seconds)))
 
@@ -429,12 +451,22 @@ def main(args):
         logging.info("finished {} epochs... ...".format(args.epoch))
         logging.info("mean accuracy:{} for {} epochs... ...".format(np.mean(test_score_list), args.epoch))
         logging.info("biggest accuracy:{} ... for {} epochs... ...".format(big_score, args.epoch))
+        logging.info("*** *** ***")
         logging.info("mean MRR:{} for {} epochs... ...".format(np.mean(test_mrr_list), args.epoch))
         logging.info("biggest MRR:{} ... for {} epochs... ...".format(big_mrr, args.epoch))
+        logging.info("*** *** ***")
+        logging.info("mean MRR_1:{} for {} epochs... ...".format(np.mean(test_mrr_list_1), args.epoch))
+        logging.info("biggest MRR_1:{} ... for {} epochs... ...".format(big_mrr_1, args.epoch))
+        logging.info("*** *** ***")
         logging.info("mean top@3:{} for {} epochs... ...".format(np.mean(test_top3_list), args.epoch))
         logging.info("biggest top@3:{} ... for {} epochs... ...".format(big_top3, args.epoch))
         logging.info("ploting... ...")
-        draw(args, test_score_list, train_loss_list, test_mrr_list, test_top3_list)
+
+        draw(args, test_score_list, 'Test Accuracy vs. epochs', 'epochs', 'accuracy', 'Test_accuracy_vs_epochs.png')
+        draw(args, train_loss_list, 'Train Loss vs. epochs', 'epochs', 'loss', 'Train_loss_vs_epochs.png')
+        draw(args, test_mrr_list_1, 'Test MRR_1 vs. epochs', 'epochs', 'mrr_1', 'Test_mrr1_vs_epochs.png')
+        draw(args, test_mrr_list, 'Test MRR vs. epochs', 'epochs', 'mrr', 'Test_mrr_vs_epochs.png')
+        draw(args, test_top3_list, 'Test Hit@3 vs. epochs', 'epochs', 'hit@3', 'Test_hit@3_vs_epochs.png')
         logging.info("_________________ finished {} epochs _________________ ".format(args.epoch))
 
 

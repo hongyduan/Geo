@@ -15,8 +15,6 @@ class Pre_Data():
         self.data_path_bef = args.data_path_bef
         self.entity_relation_path = args.entity_relation_path
         self.dim = args.node_dim
-        self.G2_val_file_name = args.G2_val_file_name
-        self.G2_test_file_name = args.G2_test_file_name
         self.leaf_node_entity = args.leaf_node_entity
         self.num_classes = args.num_classes
         #  G1_graph_sub2_tmp_2 == G1_graph_sub2_final_is_a == G1_graph_sub2_original : G1_train, 7723entity, 8467edges
