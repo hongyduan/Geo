@@ -258,7 +258,8 @@ def evalua(args, out_test, sample_label_test, en_index_G3_list_test_bef, test_sc
         for ii in out_top_pos:
             if ii in aim_top_pos:
                 top3_temp = top3_temp + 1
-        top3 = top3_temp / 3 + top3
+        if top3_temp > 0:
+            top3 = top3 + 1
     final_top3 = top3 / len(en_index_G3_list_test_bef)
     test_top3_list.append(final_top3)
     logging.info("top@3:{}".format(final_top3))
